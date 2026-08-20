@@ -113,3 +113,16 @@ class OrderSerializer(serializers.ModelSerializer):
         ]
 
 
+class CheckoutSerializer(serializers.Serializer):
+
+    shipping_address_id = serializers.IntegerField()
+
+    billing_address_id = serializers.IntegerField(
+        required=False,
+        allow_null=True,
+    )
+
+    notes = serializers.CharField(
+        required=False,
+        allow_blank=True,
+    )

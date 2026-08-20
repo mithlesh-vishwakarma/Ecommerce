@@ -72,18 +72,22 @@ class ProductImageSerializer(serializers.ModelSerializer):
         model = ProductImage
         fields = [
             "id",
+            "product",
             "image",
             "alt_text",
             "is_primary",
             "sort_order",
+            "created_at",
         ]
 
         read_only_fields = [
             "id",
+            "created_at",
         ]
 
 
 class ProductVariantSerializer(serializers.ModelSerializer):
+
     attributes = AttributeValueSerializer(
         many=True,
         read_only=True,
@@ -101,8 +105,10 @@ class ProductVariantSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = ProductVariant
+
         fields = [
             "id",
+            "product",
             "sku",
             "attributes",
             "attribute_ids",
@@ -117,7 +123,6 @@ class ProductVariantSerializer(serializers.ModelSerializer):
             "created_at",
             "updated_at",
         ]
-
 
 class ProductSerializer(serializers.ModelSerializer):
     category = CategorySerializer(read_only=True)
