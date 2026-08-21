@@ -8,7 +8,14 @@ from .models import (
 )
 
 
+# ==========================================
+# CART ITEM SERIALIZER
+# ==========================================
 class CartItemSerializer(serializers.ModelSerializer):
+    """
+    Serializer for individual items inside a shopping cart.
+    Maps a product variant and its selected quantity.
+    """
     class Meta:
         model = CartItem
         fields = [
@@ -26,7 +33,14 @@ class CartItemSerializer(serializers.ModelSerializer):
         ]
 
 
+# ==========================================
+# CART SERIALIZER
+# ==========================================
 class CartSerializer(serializers.ModelSerializer):
+    """
+    Serializer for the main shopping cart object.
+    Includes nested serialization for cart items.
+    """
     items = CartItemSerializer(
         many=True,
         read_only=True,
@@ -50,7 +64,13 @@ class CartSerializer(serializers.ModelSerializer):
         ]
 
 
+# ==========================================
+# WISHLIST ITEM SERIALIZER
+# ==========================================
 class WishlistItemSerializer(serializers.ModelSerializer):
+    """
+    Serializer for individual items added to a user's wishlist.
+    """
     class Meta:
         model = WishlistItem
         fields = [
@@ -65,7 +85,13 @@ class WishlistItemSerializer(serializers.ModelSerializer):
         ]
 
 
+# ==========================================
+# WISHLIST SERIALIZER
+# ==========================================
 class WishlistSerializer(serializers.ModelSerializer):
+    """
+    Serializer for a user's full wishlist, containing nested wishlist items.
+    """
     items = WishlistItemSerializer(
         many=True,
         read_only=True,
@@ -86,4 +112,4 @@ class WishlistSerializer(serializers.ModelSerializer):
             "user",
             "created_at",
             "updated_at",
-        ]
+        ]

@@ -12,11 +12,20 @@ from apps.orders.models import Order
 from django.conf import settings
 from .services import *
 
-class PaymentViewSet(viewsets.ReadOnlyModelViewSet):
 
+# ==========================================
+# PAYMENT VIEWSET
+# ==========================================
+class PaymentViewSet(viewsets.ReadOnlyModelViewSet):
+    """
+    Read-only viewset for customers to view payment history attached to their orders.
+    """
     serializer_class = PaymentSerializer
 
     def get_queryset(self):
+        """
+        Ensures users only access payment records for their own orders.
+        """
         return Payment.objects.filter(
             order__user=self.request.user
         ).select_related(
@@ -31,10 +40,15 @@ class PaymentViewSet(viewsets.ReadOnlyModelViewSet):
         return [IsAuthenticated()]
 
 
+# ==========================================
+# PAYMENT TRANSACTION VIEWSET
+# ==========================================
 class PaymentTransactionViewSet(
     viewsets.ReadOnlyModelViewSet
 ):
-
+    """
+    Read-only viewset for gateway transactions belonging to the user's orders.
+    """
     serializer_class = PaymentTransactionSerializer
 
     def get_queryset(self):
@@ -49,8 +63,13 @@ class PaymentTransactionViewSet(
         return [IsAuthenticated()]
 
 
+# ==========================================
+# REFUND VIEWSET
+# ==========================================
 class RefundViewSet(viewsets.ReadOnlyModelViewSet):
-
+    """
+    Read-only viewset for tracking user refund records.
+    """
     serializer_class = RefundSerializer
 
     def get_queryset(self):
@@ -65,14 +84,23 @@ class RefundViewSet(viewsets.ReadOnlyModelViewSet):
         return [IsAuthenticated()]
 
 
+# ==========================================
+# CREATE PAYMENT VIEW (RAZORPAY)
+# ==========================================
 class CreatePaymentView(APIView):
-
+    """
+    API view to initiate Razorpay payment for an order.
+    Creates or retrieves local Payment record and requests a Razorpay order ID.
+    """
     permission_classes = [
         IsAuthenticated
     ]
 
     def post(self, request):
-
+        """
+        Handles payment initiation.
+        Returns Razorpay order ID and public Razorpay Key ID for checkout popup in frontend.
+        """
         order_id = request.data.get(
             "order_id"
         )
@@ -127,14 +155,22 @@ class CreatePaymentView(APIView):
         )
 
 
+# ==========================================
+# VERIFY PAYMENT VIEW (RAZORPAY SIGNATURE)
+# ==========================================
 class VerifyPaymentView(APIView):
-
+    """
+    API view to verify cryptographic HMAC signature sent back by Razorpay frontend SDK.
+    On successful signature verification, marks payment as SUCCESS and order as PAID.
+    """
     permission_classes = [
         IsAuthenticated
     ]
 
     def post(self, request):
-
+        """
+        Verifies razorpay_order_id, razorpay_payment_id, and razorpay_signature.
+        """
         payment_id = request.data.get(
             "payment_id"
         )
@@ -190,4 +226,4 @@ class VerifyPaymentView(APIView):
                     PaymentSerializer(payment).data,
             },
             status=status.HTTP_200_OK,
-        )
+        )

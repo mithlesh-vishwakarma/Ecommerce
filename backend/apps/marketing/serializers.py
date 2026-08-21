@@ -3,7 +3,13 @@ from rest_framework import serializers
 from .models import Coupon, CouponUsage
 
 
+# ==========================================
+# COUPON SERIALIZER
+# ==========================================
 class CouponSerializer(serializers.ModelSerializer):
+    """
+    Serializer for managing discount coupons, validity dates, minimum order limits, and usage counts.
+    """
     class Meta:
         model = Coupon
 
@@ -37,12 +43,21 @@ class CouponSerializer(serializers.ModelSerializer):
         }
 
     def validate_code(self, value):
+        """
+        Normalizes coupon codes to uppercase and strips whitespace.
+        """
         return value.strip().upper()
 
 
+# ==========================================
+# COUPON USAGE SERIALIZER
+# ==========================================
 class CouponUsageSerializer(
     serializers.ModelSerializer
 ):
+    """
+    Serializer for tracking coupon redemption records per user and order.
+    """
     class Meta:
         model = CouponUsage
 
@@ -62,4 +77,5 @@ class CouponUsageSerializer(
             "discount_amount",
             "used_at",
         ]
+
 

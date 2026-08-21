@@ -2,10 +2,19 @@ from rest_framework import serializers
 from .models import User, Address
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group, Permission
+from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 
 User = get_user_model()
 
+
+# ==========================================
+# USER SERIALIZER
+# ==========================================
 class UserSerializer(serializers.ModelSerializer):
+    """
+    Serializer to convert User model instances into JSON format and vice versa.
+    Exposes public and profile information of a user while marking system fields as read-only.
+    """
     class Meta:
         model = User
         fields = [
@@ -22,6 +31,7 @@ class UserSerializer(serializers.ModelSerializer):
             "date_joined",
             "created_at",
         ]
+        # These fields cannot be modified directly via user updates
         read_only_fields = [
             "id",
             "is_customer",
@@ -31,7 +41,15 @@ class UserSerializer(serializers.ModelSerializer):
             "created_at",
         ]
 
+
+# ==========================================
+# ADDRESS SERIALIZER
+# ==========================================
 class AddressSerializer(serializers.ModelSerializer):
+    """
+    Serializer for managing shipping and billing addresses for users.
+    Handles field formatting, database mapping, and auto-populated fields.
+    """
     class Meta:
         model = Address
         fields = [
@@ -50,7 +68,6 @@ class AddressSerializer(serializers.ModelSerializer):
             "created_at",
             "updated_at",
         ]
-
         read_only_fields = [
             "id",
             "created_at",
@@ -58,9 +75,15 @@ class AddressSerializer(serializers.ModelSerializer):
         ]
 
 
-
-
+# ==========================================
+# REGISTER SERIALIZER
+# ==========================================
 class RegisterSerializer(serializers.ModelSerializer):
+    """
+    Serializer used specifically for User Registration.
+    Includes password validation, email duplicate checks, and user object creation.
+    """
+    # Write-only fields mean passwords are accepted during POST, but never returned in JSON responses
     password = serializers.CharField(
         write_only=True,
         min_length=8,
@@ -83,6 +106,9 @@ class RegisterSerializer(serializers.ModelSerializer):
         ]
 
     def validate_email(self, value):
+        """
+        Validates that the email is unique and formatted in lowercase.
+        """
         value = value.lower().strip()
 
         if User.objects.filter(email=value).exists():
@@ -93,6 +119,9 @@ class RegisterSerializer(serializers.ModelSerializer):
         return value
 
     def validate(self, attrs):
+        """
+        Ensures password and confirmation password match.
+        """
         if attrs["password"] != attrs["password2"]:
             raise serializers.ValidationError({
                 "password": "Passwords do not match."
@@ -101,8 +130,10 @@ class RegisterSerializer(serializers.ModelSerializer):
         return attrs
 
     def create(self, validated_data):
+        """
+        Creates and returns a new User instance using Django's create_user method (which handles password hashing).
+        """
         validated_data.pop("password2")
-
         password = validated_data.pop("password")
 
         user = User.objects.create_user(
@@ -113,11 +144,15 @@ class RegisterSerializer(serializers.ModelSerializer):
         return user
 
 
+# ==========================================
+# PROFILE UPDATE SERIALIZER
+# ==========================================
 class ProfileUpdateSerializer(serializers.ModelSerializer):
-
+    """
+    Serializer used by authenticated users to update their personal details (name, phone, profile image).
+    """
     class Meta:
         model = User
-
         fields = [
             "first_name",
             "last_name",
@@ -126,8 +161,14 @@ class ProfileUpdateSerializer(serializers.ModelSerializer):
         ]
 
 
+# ==========================================
+# CHANGE PASSWORD SERIALIZER
+# ==========================================
 class ChangePasswordSerializer(serializers.Serializer):
-
+    """
+    Serializer to handle changing user passwords securely.
+    Requires current password and new password confirmation.
+    """
     old_password = serializers.CharField(
         write_only=True,
     )
@@ -142,7 +183,9 @@ class ChangePasswordSerializer(serializers.Serializer):
     )
 
     def validate(self, attrs):
-
+        """
+        Validates that new password and repeat new password match.
+        """
         if attrs["new_password"] != attrs["new_password2"]:
             raise serializers.ValidationError({
                 "new_password": "Passwords do not match."
@@ -150,43 +193,20 @@ class ChangePasswordSerializer(serializers.Serializer):
 
         return attrs
 
-class AddressSerializer(serializers.ModelSerializer):
 
-    class Meta:
-        model = Address
-
-        fields = [
-            "id",
-            "address_type",
-            "full_name",
-            "phone",
-            "address_line_1",
-            "address_line_2",
-            "landmark",
-            "city",
-            "state",
-            "postal_code",
-            "country",
-            "is_default",
-            "created_at",
-            "updated_at",
-        ]
-
-        read_only_fields = [
-            "id",
-            "created_at",
-            "updated_at",
-        ]
-
-from rest_framework_simplejwt.serializers import (
-    TokenObtainPairSerializer,
-)
-
-
+# ==========================================
+# LOGIN SERIALIZER (JWT)
+# ==========================================
 class LoginSerializer(TokenObtainPairSerializer):
-
+    """
+    Custom JWT Login Serializer that adds custom claims (user_id, email, is_staff) to the JWT payload
+    and attaches user details in the authentication response.
+    """
     @classmethod
     def get_token(cls, user):
+        """
+        Adds custom user details to the JWT Token payload.
+        """
         token = super().get_token(user)
 
         token["user_id"] = user.id
@@ -196,6 +216,9 @@ class LoginSerializer(TokenObtainPairSerializer):
         return token
 
     def validate(self, attrs):
+        """
+        Validates credentials and embeds User object details in the API response.
+        """
         data = super().validate(attrs)
 
         data["user"] = UserSerializer(
@@ -204,8 +227,14 @@ class LoginSerializer(TokenObtainPairSerializer):
 
         return data
 
-class PermissionSerializer(serializers.ModelSerializer):
 
+# ==========================================
+# PERMISSION & ROLE SERIALIZERS (ADMIN)
+# ==========================================
+class PermissionSerializer(serializers.ModelSerializer):
+    """
+    Serializer for Django permissions, showing app name, model, name, and codename.
+    """
     app_label = serializers.CharField(
         source="content_type.app_label",
         read_only=True,
@@ -218,7 +247,6 @@ class PermissionSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Permission
-
         fields = [
             "id",
             "name",
@@ -227,8 +255,11 @@ class PermissionSerializer(serializers.ModelSerializer):
             "model",
         ]
 
-class RoleSerializer(serializers.ModelSerializer):
 
+class RoleSerializer(serializers.ModelSerializer):
+    """
+    Serializer for User Groups (Roles), including associated permissions.
+    """
     permissions = PermissionSerializer(
         many=True,
         read_only=True,
@@ -236,15 +267,17 @@ class RoleSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Group
-
         fields = [
             "id",
             "name",
             "permissions",
         ]
 
-class AdminUserSerializer(serializers.ModelSerializer):
 
+class AdminUserSerializer(serializers.ModelSerializer):
+    """
+    Serializer for SuperAdmins to manage staff members and assign user roles (groups).
+    """
     roles = serializers.SerializerMethodField()
 
     role_ids = serializers.PrimaryKeyRelatedField(
@@ -257,7 +290,6 @@ class AdminUserSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = User
-
         fields = [
             "id",
             "username",
@@ -272,7 +304,6 @@ class AdminUserSerializer(serializers.ModelSerializer):
             "date_joined",
             "created_at",
         ]
-
         read_only_fields = [
             "id",
             "date_joined",
@@ -281,11 +312,13 @@ class AdminUserSerializer(serializers.ModelSerializer):
         ]
 
     def get_roles(self, obj):
-
+        """
+        Returns a simplified list of roles (groups) assigned to the user.
+        """
         return [
             {
                 "id": group.id,
                 "name": group.name,
             }
             for group in obj.groups.all()
-        ]
+        ]

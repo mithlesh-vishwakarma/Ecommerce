@@ -12,6 +12,9 @@ from apps.orders.models import Order
 
 
 def get_razorpay_client():
+    """
+    Initializes and returns the Razorpay API Client instance using configured Key ID and Secret.
+    """
     return razorpay.Client(
         auth=(
             settings.RAZORPAY_KEY_ID,
@@ -22,7 +25,10 @@ def get_razorpay_client():
 
 @transaction.atomic
 def create_payment_order(order, user):
-
+    """
+    Creates a payment session with Razorpay for the given Order.
+    Converts total amount into paise (amount * 100) as required by Razorpay API.
+    """
     if order.user_id != user.id:
         raise ValidationError(
             "You are not allowed to pay for this order."
@@ -43,13 +49,13 @@ def create_payment_order(order, user):
         },
     )
 
-    # If payment already has a Razorpay order
-    # don't create another one unnecessarily.
+    # If payment already has a Razorpay order ID, avoid creating a duplicate order
     if payment.gateway_order_id:
         return payment
 
     client = get_razorpay_client()
 
+    # Razorpay expects amounts in minimum currency units (e.g. 1 INR = 100 paise)
     razorpay_order = client.order.create(
         {
             "amount": int(
@@ -81,7 +87,10 @@ def verify_payment(
     razorpay_payment_id,
     razorpay_signature,
 ):
-
+    """
+    Verifies Razorpay payment signature after successful completion on the frontend.
+    Updates payment status, creates transaction log, and updates Order status to PAID/CONFIRMED.
+    """
     if payment.gateway_order_id != razorpay_order_id:
         raise ValidationError(
             "Razorpay order ID does not match."
@@ -90,6 +99,7 @@ def verify_payment(
     client = get_razorpay_client()
 
     try:
+        # Cryptographic verification of payment signature
         client.utility.verify_payment_signature(
             {
                 "razorpay_order_id":
@@ -117,7 +127,7 @@ def verify_payment(
             "Payment verification failed."
         )
 
-    # Payment is verified successfully
+    # Update Payment record state on verification success
     payment.transaction_id = razorpay_payment_id
     payment.status = Payment.Status.SUCCESS
     payment.paid_at = timezone.now()
@@ -131,7 +141,7 @@ def verify_payment(
         ]
     )
 
-    # Save transaction in our database
+    # Save transaction details in local database
     transaction_record = PaymentTransaction.objects.create(
         payment=payment,
         transaction_id=razorpay_payment_id,
@@ -148,7 +158,7 @@ def verify_payment(
         },
     )
 
-    # Update order
+    # Update parent Order status to PAID and CONFIRMED
     order = payment.order
 
     order.payment_status = (
@@ -165,4 +175,4 @@ def verify_payment(
         ]
     )
 
-    return payment
+    return payment

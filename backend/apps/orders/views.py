@@ -7,19 +7,28 @@ from rest_framework import status
 from apps.accounts.models import Address
 from .services import create_order_from_cart
 from .models import Order
-from .serializers import OrderSerializer,CheckoutSerializer
+from .serializers import OrderSerializer, CheckoutSerializer
 
 from apps.accounts.permissions import HasModelPermission
 
 
+# ==========================================
+# ORDER VIEWSET
+# ==========================================
 class OrderViewSet(viewsets.ReadOnlyModelViewSet):
-
+    """
+    Read-only ViewSet for orders.
+    Customers view their own placed orders; Staff/Admin users can view all orders.
+    """
     serializer_class = OrderSerializer
 
     def get_queryset(self):
+        """
+        Filters orders by user role and prefetches related items and status logs.
+        """
         user = self.request.user
 
-        # Staff/admin can see all orders if they have permission
+        # Staff/admin can see all orders if authenticated
         if user.is_staff:
             return Order.objects.select_related(
                 "user"
@@ -46,14 +55,22 @@ class OrderViewSet(viewsets.ReadOnlyModelViewSet):
         return [IsAuthenticated()]
 
 
+# ==========================================
+# CHECKOUT VIEW
+# ==========================================
 class CheckoutView(APIView):
-
+    """
+    API view to process cart checkout.
+    Validates shipping/billing addresses and invokes service layer to create an Order and reserve inventory.
+    """
     permission_classes = [
         IsAuthenticated
     ]
 
     def post(self, request):
-
+        """
+        Handles POST checkout request.
+        """
         serializer = CheckoutSerializer(
             data=request.data
         )
@@ -79,8 +96,7 @@ class CheckoutView(APIView):
             "",
         )
 
-        # Make sure shipping address belongs
-        # to the logged-in user
+        # Ensure shipping address belongs to the logged-in user
         try:
             shipping_address = Address.objects.get(
                 id=shipping_address_id,
@@ -97,7 +113,6 @@ class CheckoutView(APIView):
         billing_address = None
 
         if billing_address_id:
-
             try:
                 billing_address = Address.objects.get(
                     id=billing_address_id,
@@ -112,7 +127,7 @@ class CheckoutView(APIView):
                     }
                 )
 
-        # Convert addresses into snapshots
+        # Convert addresses into snapshots so future user address edits won't alter past order records
         shipping_address_data = {
             "address_type": shipping_address.address_type,
             "full_name": shipping_address.full_name,
@@ -129,7 +144,6 @@ class CheckoutView(APIView):
         billing_address_data = None
 
         if billing_address:
-
             billing_address_data = {
                 "address_type": billing_address.address_type,
                 "full_name": billing_address.full_name,
@@ -143,6 +157,7 @@ class CheckoutView(APIView):
                 "country": billing_address.country,
             }
 
+        # Service function creates order, copies items, reserves inventory, and clears user's cart
         order = create_order_from_cart(
             user=request.user,
             shipping_address=shipping_address_data,
@@ -158,4 +173,4 @@ class CheckoutView(APIView):
                 ).data,
             },
             status=status.HTTP_201_CREATED,
-        )
+        )

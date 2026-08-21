@@ -7,9 +7,15 @@ from .models import (
 )
 
 
+# ==========================================
+# PAYMENT TRANSACTION SERIALIZER
+# ==========================================
 class PaymentTransactionSerializer(
     serializers.ModelSerializer
 ):
+    """
+    Serializer for individual payment gateway transactions (Razorpay transaction log).
+    """
     class Meta:
         model = PaymentTransaction
         fields = [
@@ -28,7 +34,13 @@ class PaymentTransactionSerializer(
         ]
 
 
+# ==========================================
+# REFUND SERIALIZER
+# ==========================================
 class RefundSerializer(serializers.ModelSerializer):
+    """
+    Serializer for handling payment refund requests and tracking refund statuses.
+    """
     class Meta:
         model = Refund
         fields = [
@@ -51,7 +63,14 @@ class RefundSerializer(serializers.ModelSerializer):
         ]
 
 
+# ==========================================
+# PAYMENT SERIALIZER
+# ==========================================
 class PaymentSerializer(serializers.ModelSerializer):
+    """
+    Serializer for main Payment objects.
+    Nests associated transaction history logs and refund records.
+    """
     transactions = PaymentTransactionSerializer(
         many=True,
         read_only=True,
@@ -90,4 +109,4 @@ class PaymentSerializer(serializers.ModelSerializer):
             "refunds",
             "created_at",
             "updated_at",
-        ]
+        ]

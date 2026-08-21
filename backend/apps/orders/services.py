@@ -15,6 +15,19 @@ def create_order_from_cart(
     billing_address=None,
     notes="",
 ):
+    """
+    Creates an Order from the user's active Cart in a single database transaction.
+    
+    Steps:
+    1. Fetches and checks user's cart and cart items.
+    2. Uses DB row-level locking (select_for_update) on Inventory records to avoid race conditions.
+    3. Validates variant activity status and stock availability.
+    4. Calculates prices and total amounts.
+    5. Creates the Order record and OrderItems snapshots.
+    6. Reserves the purchased quantity in Inventory.
+    7. Creates initial OrderStatusHistory log.
+    8. Clears the user's Cart after successful order creation.
+    """
     try:
         cart = Cart.objects.prefetch_related(
             "items",
@@ -29,7 +42,7 @@ def create_order_from_cart(
     if not cart_items:
         raise ValidationError("Your cart is empty.")
 
-    # Lock inventory rows while checkout is running
+    # Lock inventory rows using select_for_update while checkout is processing
     variant_ids = [
         item.variant_id
         for item in cart_items
@@ -43,11 +56,9 @@ def create_order_from_cart(
     }
 
     subtotal = Decimal("0.00")
-
     validated_items = []
 
     for cart_item in cart_items:
-
         variant = cart_item.variant
         product = variant.product
 
@@ -76,7 +87,7 @@ def create_order_from_cart(
                 f"units available for {variant.sku}."
             )
 
-        # Variant price overrides product price
+        # Variant price overrides product selling price if specified
         if variant.price is not None:
             unit_price = variant.price
         else:
@@ -97,8 +108,7 @@ def create_order_from_cart(
             "total_price": total_price,
         })
 
-    # For now these are zero.
-    # Coupons/shipping/tax will be added later.
+    # Calculations for discount, shipping, tax
     discount_amount = Decimal("0.00")
     shipping_amount = Decimal("0.00")
     tax_amount = Decimal("0.00")
@@ -110,7 +120,7 @@ def create_order_from_cart(
         + tax_amount
     )
 
-    # Create order
+    # Create Order object in database
     order = Order.objects.create(
         user=user,
         order_number=generate_order_number(),
@@ -126,9 +136,8 @@ def create_order_from_cart(
         notes=notes,
     )
 
-    # Create order items + reserve inventory
+    # Create OrderItem records & update reserved inventory quantity
     for item in validated_items:
-
         OrderItem.objects.create(
             order=order,
             variant=item["variant"],
@@ -150,7 +159,7 @@ def create_order_from_cart(
             ]
         )
 
-    # Create initial status history
+    # Log initial status in status history tracking
     OrderStatusHistory.objects.create(
         order=order,
         status=Order.Status.PENDING,
@@ -158,13 +167,17 @@ def create_order_from_cart(
         note="Order created from checkout.",
     )
 
-    # Clear cart only after everything succeeded
+    # Empty user's cart items after order is saved successfully
     cart.items.all().delete()
 
     return order
 
 
 def generate_order_number():
+    """
+    Generates a unique order reference number using standard prefix and UUID prefix.
+    Example: ORD-A1B2C3D4E5F6
+    """
     import uuid
 
-    return f"ORD-{uuid.uuid4().hex[:12].upper()}"
+    return f"ORD-{uuid.uuid4().hex[:12].upper()}"

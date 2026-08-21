@@ -10,7 +10,15 @@ from .models import (
     ProductVariant,
 )
 
+
+# ==========================================
+# CATEGORY SERIALIZER
+# ==========================================
 class CategorySerializer(serializers.ModelSerializer):
+    """
+    Serializer for Product Categories (e.g. Electronics, Clothing).
+    Converts Category instances into JSON and handles auto-generated slug/timestamps.
+    """
     class Meta:
         model = Category
         fields = "__all__"
@@ -22,7 +30,13 @@ class CategorySerializer(serializers.ModelSerializer):
         ]
 
 
+# ==========================================
+# BRAND SERIALIZER
+# ==========================================
 class BrandSerializer(serializers.ModelSerializer):
+    """
+    Serializer for Product Brands (e.g. Nike, Apple, Samsung).
+    """
     class Meta:
         model = Brand
         fields = "__all__"
@@ -34,7 +48,13 @@ class BrandSerializer(serializers.ModelSerializer):
         ]
 
 
+# ==========================================
+# ATTRIBUTE VALUE SERIALIZER
+# ==========================================
 class AttributeValueSerializer(serializers.ModelSerializer):
+    """
+    Serializer for specific values of an attribute (e.g., "Red", "Blue", "XL", "64GB").
+    """
     class Meta:
         model = AttributeValue
         fields = "__all__"
@@ -44,8 +64,14 @@ class AttributeValueSerializer(serializers.ModelSerializer):
         ]
 
 
-
+# ==========================================
+# ATTRIBUTE SERIALIZER
+# ==========================================
 class AttributeSerializer(serializers.ModelSerializer):
+    """
+    Serializer for Product Attributes (e.g., "Color", "Size").
+    Includes nested serializations of all associated attribute values.
+    """
     values = AttributeValueSerializer(
         many=True,
         read_only=True,
@@ -67,7 +93,14 @@ class AttributeSerializer(serializers.ModelSerializer):
         ]
 
 
+# ==========================================
+# PRODUCT IMAGE SERIALIZER
+# ==========================================
 class ProductImageSerializer(serializers.ModelSerializer):
+    """
+    Serializer for gallery images attached to a product.
+    Includes primary image status and sorting order.
+    """
     class Meta:
         model = ProductImage
         fields = [
@@ -86,13 +119,20 @@ class ProductImageSerializer(serializers.ModelSerializer):
         ]
 
 
+# ==========================================
+# PRODUCT VARIANT SERIALIZER
+# ==========================================
 class ProductVariantSerializer(serializers.ModelSerializer):
-
+    """
+    Serializer for specific product variations (SKU, price override, attributes like Size+Color).
+    Supports reading attribute details and writing attribute IDs.
+    """
     attributes = AttributeValueSerializer(
         many=True,
         read_only=True,
     )
 
+    # Accepts attribute value IDs during creation/update
     attribute_ids = serializers.PrimaryKeyRelatedField(
         many=True,
         write_only=True,
@@ -124,7 +164,15 @@ class ProductVariantSerializer(serializers.ModelSerializer):
             "updated_at",
         ]
 
+
+# ==========================================
+# PRODUCT SERIALIZER
+# ==========================================
 class ProductSerializer(serializers.ModelSerializer):
+    """
+    Comprehensive Serializer for Product details.
+    Combines nested details for Category, Brand, Images, and Variants for full frontend rendering.
+    """
     category = CategorySerializer(read_only=True)
     brand = BrandSerializer(read_only=True)
 
@@ -138,6 +186,7 @@ class ProductSerializer(serializers.ModelSerializer):
         read_only=True,
     )
 
+    # Primary key inputs for foreign key assignment on create/update
     category_id = serializers.PrimaryKeyRelatedField(
         queryset=Category.objects.filter(
             is_active=True
@@ -187,5 +236,6 @@ class ProductSerializer(serializers.ModelSerializer):
             "created_at",
             "updated_at",
         ]
+
 
 

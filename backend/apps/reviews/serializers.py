@@ -3,9 +3,15 @@ from rest_framework import serializers
 from .models import Review, ReviewImage
 
 
+# ==========================================
+# REVIEW IMAGE SERIALIZER
+# ==========================================
 class ReviewImageSerializer(
     serializers.ModelSerializer
 ):
+    """
+    Serializer for photos uploaded by users attached to product reviews.
+    """
     class Meta:
         model = ReviewImage
         fields = [
@@ -20,7 +26,14 @@ class ReviewImageSerializer(
         ]
 
 
+# ==========================================
+# REVIEW SERIALIZER
+# ==========================================
 class ReviewSerializer(serializers.ModelSerializer):
+    """
+    Serializer for customer product reviews and ratings (1 to 5 stars).
+    Includes verified purchase tags and admin approval status.
+    """
     images = ReviewImageSerializer(
         many=True,
         read_only=True,
@@ -53,4 +66,4 @@ class ReviewSerializer(serializers.ModelSerializer):
             "images",
             "created_at",
             "updated_at",
-        ]
+        ]

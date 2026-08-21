@@ -7,7 +7,14 @@ from .models import (
 )
 
 
+# ==========================================
+# ORDER ITEM SERIALIZER
+# ==========================================
 class OrderItemSerializer(serializers.ModelSerializer):
+    """
+    Serializer for individual items captured at the time of order placement.
+    Includes item snapshot details (product name, unit price, quantity, total price).
+    """
     class Meta:
         model = OrderItem
         fields = [
@@ -31,9 +38,16 @@ class OrderItemSerializer(serializers.ModelSerializer):
         ]
 
 
+# ==========================================
+# ORDER STATUS HISTORY SERIALIZER
+# ==========================================
 class OrderStatusHistorySerializer(
     serializers.ModelSerializer
 ):
+    """
+    Serializer for tracking order status transitions (e.g. Pending -> Confirmed -> Shipped).
+    Computes full name of user who made the status update.
+    """
     changed_by_name = serializers.SerializerMethodField()
 
     class Meta:
@@ -55,13 +69,23 @@ class OrderStatusHistorySerializer(
         ]
 
     def get_changed_by_name(self, obj):
+        """
+        Returns string full name of staff or user modifying status.
+        """
         if obj.changed_by:
             return obj.changed_by.get_full_name()
 
         return None
 
 
+# ==========================================
+# ORDER SERIALIZER
+# ==========================================
 class OrderSerializer(serializers.ModelSerializer):
+    """
+    Serializer for full Order objects.
+    Nests order items and status audit history.
+    """
     items = OrderItemSerializer(
         many=True,
         read_only=True,
@@ -113,8 +137,14 @@ class OrderSerializer(serializers.ModelSerializer):
         ]
 
 
+# ==========================================
+# CHECKOUT SERIALIZER
+# ==========================================
 class CheckoutSerializer(serializers.Serializer):
-
+    """
+    Serializer for validating incoming checkout request payloads.
+    Requires shipping address ID and optional billing address ID or customer notes.
+    """
     shipping_address_id = serializers.IntegerField()
 
     billing_address_id = serializers.IntegerField(
@@ -125,4 +155,4 @@ class CheckoutSerializer(serializers.Serializer):
     notes = serializers.CharField(
         required=False,
         allow_blank=True,
-    )
+    )

@@ -14,7 +14,14 @@ from .serializers import (
 from apps.accounts.permissions import HasModelPermission
 
 
+# ==========================================
+# INVENTORY VIEWSET
+# ==========================================
 class InventoryViewSet(viewsets.ModelViewSet):
+    """
+    ViewSet to manage inventory levels for product variants.
+    Provides public read-only access and requires admin permissions for modifications.
+    """
     queryset = Inventory.objects.select_related(
         "variant",
         "variant__product",
@@ -29,7 +36,14 @@ class InventoryViewSet(viewsets.ModelViewSet):
         return [HasModelPermission()]
 
 
+# ==========================================
+# INVENTORY TRANSACTION VIEWSET
+# ==========================================
 class InventoryTransactionViewSet(viewsets.ModelViewSet):
+    """
+    ViewSet to record and view inventory transactions (stock audits, additions, deductions).
+    Automatically attaches created_by user on creation.
+    """
     queryset = InventoryTransaction.objects.select_related(
         "variant",
         "variant__product",
@@ -45,4 +59,7 @@ class InventoryTransactionViewSet(viewsets.ModelViewSet):
         return [HasModelPermission()]
 
     def perform_create(self, serializer):
-        serializer.save(created_by=self.request.user)
+        """
+        Automatically sets the creator to the requesting user.
+        """
+        serializer.save(created_by=self.request.user)
