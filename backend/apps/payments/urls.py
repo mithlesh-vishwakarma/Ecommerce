@@ -7,6 +7,9 @@ from .views import (
     RefundViewSet,
     CreatePaymentView,
     VerifyPaymentView,
+    CancelPaymentView,
+    InitiateRefundView,
+    RazorpayWebhookView,
 )
 
 
@@ -32,16 +35,29 @@ router.register(
 
 
 urlpatterns = router.urls + [
-
     path(
         "create/",
         CreatePaymentView.as_view(),
         name="create-payment",
     ),
-
     path(
         "verify/",
         VerifyPaymentView.as_view(),
         name="verify-payment",
     ),
-]
+    path(
+        "cancel/",
+        CancelPaymentView.as_view(),
+        name="cancel-payment",
+    ),
+    path(
+        "refund/initiate/",
+        InitiateRefundView.as_view(),
+        name="initiate-refund",
+    ),
+    path(
+        "webhook/",
+        RazorpayWebhookView.as_view(),
+        name="razorpay-webhook",
+    ),
+]

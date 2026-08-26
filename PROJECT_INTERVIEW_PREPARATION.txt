@@ -1,0 +1,1005 @@
+============================================================
+PROJECT INTERVIEW PREPARATION HANDBOOK
+============================================================
+
+PROJECT: Enterprise E-Commerce Platform (Ecommerce)
+AUTHOR / CANDIDATE: Mithlesh Vishwakarma
+REPO / PATH: d:\Projects\Tops Technologies\Projects\Ecommerce
+TARGET ROLE: Full-Stack Developer / Backend Developer (Python, Django, DRF, React)
+
+Interview Preparation Based on Actual Project Implementation
+
+============================================================
+METADATA & QUICK SUMMARY
+============================================================
+
+PROJECT NAME     : Enterprise E-Commerce Platform (Ecommerce)
+TECHNOLOGY STACK : Python 3.x, Django 5.x, Django REST Framework (DRF), 
+                   Simple JWT, PostgreSQL / SQLite, Razorpay Payment Gateway, 
+                   Django ORM, React / Axios / React Router (Frontend integration)
+PROJECT TYPE     : Enterprise E-Commerce REST API & Full-Stack Application
+MAIN PURPOSE     : To provide a secure, scalable, multi-role e-commerce ecosystem 
+                   featuring atomic order processing, real-time inventory 
+                   reservation, role-based access control (RBAC), and 
+                   Razorpay payment verification.
+KEY FEATURES     : 
+  * Custom User Model with Email-based Authentication & Profile Management
+  * Stateless JWT Auth with Token Blacklisting on Logout
+  * Dynamic Role-Based Access Control (RBAC) via Django Groups & Model Permissions
+  * Product Catalog Architecture (Categories, Brands, Attributes, Products, Variants, Images)
+  * Real-Time Inventory Tracking with Reserved Quantity Management
+  * Cart & Wishlist Lifecycle Management
+  * Atomic Checkout & Order Processing with DB Row-Level Locking (select_for_update)
+  * Immutable Address Snapshotting on Placed Orders
+  * Integrated Razorpay Payment Gateway with Cryptographic HMAC Signature Verification
+  * Comprehensive Order Status & History Tracking
+MY ROLE          : Primary Full-Stack / Backend Developer (Architecture, APIs, DB Schema, 
+                   Services, Security, RBAC, and Integration)
+ARCHITECTURE     : Service-Oriented Layered Monolith (DRF ViewSets + Service Layer + Django ORM)
+DATABASE         : Relational Database (PostgreSQL / SQLite3 in Development)
+API SPECIFICATION: RESTful APIs under `/api/v1/` versioning namespace
+FRONTEND STACK   : React SPA using Axios with JWT Interceptors & React Router
+BACKEND STACK    : Django 5.x + Django REST Framework + Simple JWT + Razorpay SDK
+
+
+============================================================
+SECTION 1 - PROJECT OVERVIEW
+============================================================
+
+1. WHAT THE PROJECT DOES:
+   This project is a multi-role enterprise e-commerce platform that allows customers to 
+   browse products, manage shopping carts and wishlists, place orders with real-time 
+   inventory reservation, and make secure payments via Razorpay. It also provides a 
+   granular admin control system where internal staff members are assigned specific 
+   business roles (e.g., Product Manager, Order Manager, Inventory Manager) to manage 
+   the platform.
+
+2. PROBLEM IT SOLVES:
+   Traditional simple e-commerce implementations suffer from critical flaws:
+   * Race conditions during checkout when multiple customers purchase the same stock item simultaneously.
+   * Vulnerability to price/address tampering after checkout.
+   * Rigid permissions where staff members have all-or-nothing admin access.
+   * Weak payment flows that trust client-side success reports without cryptographic verification.
+   This project solves all four problems using database row-level locking (`select_for_update`), 
+   atomic transaction boundaries (`@transaction.atomic`), historical JSON address snapshots, 
+   dynamic DRF permission mapping based on Django Groups, and server-side HMAC SHA256 
+   signature verification.
+
+3. TARGET USERS:
+   * Online Shoppers (Customers) who create accounts, save addresses, build carts, and purchase items.
+   * Super Administrators who assign roles and permissions to staff members.
+   * Product Managers who handle categories, brands, products, attributes, and variants.
+   * Order & Inventory Managers who oversee order fulfillment, stock levels, and inventory adjustments.
+
+4. MAIN MODULES:
+   * `apps.accounts`  : Custom User model, Address book, JWT Auth, RBAC permissions, Staff role management.
+   * `apps.catalog`   : Multi-level Categories, Brands, Attributes, AttributeValues, Products, Images, ProductVariants.
+   * `apps.inventory` : Stock quantities, Reserved quantities, Low-stock alerts, Inventory transaction logs.
+   * `apps.cart`      : Persistent User Cart, Cart Items with variant selections, Wishlist management.
+   * `apps.orders`    : Atomic Order creation service, Order Items snapshot, Order status history log.
+   * `apps.payments`  : Razorpay session creation, Cryptographic payment verification, Refund tracking.
+   * `apps.reviews`   : Ratings and customer review system (Extended catalog feature).
+   * `apps.marketing` : Promotional coupons and discount rules (Extended catalog feature).
+
+5. MAIN FEATURES:
+   * Email-based User Auth & JWT Token Blacklisting.
+   * Granular RBAC (`IsSuperAdmin` and `HasModelPermission`).
+   * Dynamic Product Variant pricing and attribute mapping (Size, Color, Storage).
+   * Concurrency-safe checkout with row locking (`select_for_update`).
+   * Immutable Address Snapshots stored directly inside JSON fields in Order objects.
+   * Razorpay API integration with HMAC-SHA256 signature verification.
+
+6. IMPORTANT WORKFLOWS:
+   * Registration -> Login (Receive JWT Access & Refresh Tokens) -> Store Tokens in Client.
+   * Browse Catalog -> Select Product Variant -> Add to Cart -> Adjust Quantities.
+   * Initiate Checkout -> Select Shipping/Billing Address -> Execute Atomic Service (`create_order_from_cart`).
+   * Lock Inventory Rows -> Reserve Stock -> Generate Order -> Clear Cart.
+   * Initiate Razorpay Payment (`create_payment_order`) -> Convert Amount to Paise -> Return Razorpay Order ID.
+   * Execute Frontend Razorpay Popup -> Receive Signature -> Post to Verification Endpoint (`verify_payment`).
+   * Verify HMAC Signature -> Mark Payment PAID -> Mark Order CONFIRMED.
+
+7. TECHNOLOGY STACK OVERVIEW:
+   * Backend: Python 3.12+, Django 5.x, Django REST Framework 3.15+, `djangorestframework-simplejwt`, `razorpay` SDK.
+   * Database: PostgreSQL / SQLite3 managed via Django ORM.
+   * Authentication: JSON Web Tokens (JWT) with refresh token blacklisting stored in `token_blacklist` tables.
+   * Frontend Integration: React with Axios HTTP client, JWT authorization header injection, React Router v6.
+
+8. ARCHITECTURE OVERVIEW:
+   Layered Monolithic Architecture with a decoupled API layer. Requests hit DRF ViewSets / APIViews, 
+   which check authentication and dynamic permission classes (`HasModelPermission`). Business logic 
+   is isolated in dedicated service layers (`apps.orders.services`, `apps.payments.services`) wrapped 
+   inside `@transaction.atomic` database transactions.
+
+------------------------------------------------------------
+HOW TO EXPLAIN THIS PROJECT IN AN INTERVIEW
+------------------------------------------------------------
+
+[30-SECOND ELEVATOR PITCH]
+"I built an enterprise e-commerce backend and platform using Django REST Framework and React. 
+It features JWT authentication with token blacklisting, a custom user model, and a dynamic 
+Role-Based Access Control system mapped to Django permissions. The core highlights are its 
+concurrency-safe checkout engine—which uses database row locking and atomic transactions to 
+prevent overselling stock—and an integrated Razorpay payment verification system using cryptographic 
+signature validation."
+
+[60-SECOND SUMMARY]
+"My project is a full-stack enterprise e-commerce application designed to solve common production 
+challenges like race conditions, insecure payment verification, and rigid admin permissions. 
+On the backend, I built a modular architecture using Django 5 and Django REST Framework. I implemented 
+a custom User model with JWT authentication and custom permission classes that map HTTP verbs directly 
+to Django model permissions for RBAC. The checkout workflow uses Python service functions inside atomic 
+database transactions with `select_for_update` row locking to guarantee stock availability before 
+reserving it. For payments, I integrated Razorpay, handling order creation in paise and verifying 
+the cryptographic HMAC-SHA256 signatures server-side before marking orders as paid."
+
+[2-MINUTE DETAILED OVERVIEW]
+"In this project, I developed an enterprise-grade e-commerce REST API and platform. 
+Architecturally, the application is divided into core modular domains: Accounts, Catalog, Cart, 
+Inventory, Orders, and Payments.
+
+For authentication and security, I avoided Django's default username field and created a custom User 
+model authenticated via unique email addresses. I implemented stateless JWT authentication using 
+Simple JWT, adding a secure logout endpoint that blacklists refresh tokens in the database. Authorization 
+uses Django's native Group system combined with a custom permission class called `HasModelPermission`, 
+which dynamically extracts the model and HTTP method (GET, POST, PUT, DELETE) to check against 
+permissions like `catalog.add_brand` or `orders.change_order`.
+
+The product catalog supports complex variants—like size or color—using model relationships between Products, 
+Attributes, AttributeValues, and ProductVariants. 
+
+The highlight of the project is the checkout and order fulfillment logic in `apps.orders.services`. 
+When a user checks out, an atomic transaction begins. We query inventory rows for all cart items using 
+`select_for_update()`, which locks those specific rows in the database. This prevents two concurrent 
+users from buying the last unit of an item. Once stock is verified, we snapshot the shipping address into 
+a JSON field on the order so future profile edits won't alter past order records. We then reserve stock, 
+create order items, log the order status history, and clear the cart. 
+
+Finally, payment is handled via Razorpay SDK integration where order amounts are converted to minimum currency 
+units (paise) and verified on the backend using HMAC signature verification before updating order status to CONFIRMED."
+
+[5-MINUTE IN-DEPTH ARCHITECTURAL WALKTHROUGH]
+"Let me walk you through the end-to-end architecture and implementation details of my e-commerce platform.
+
+1. System Architecture & Domain Design:
+   I designed the backend following clean architectural principles by decoupling HTTP/API handling from 
+   business logic. Views in `apps.orders.views` and `apps.payments.views` handle request parsing and 
+   validation, while complex business flows are executed inside service modules like `services.py`. 
+
+2. Security & RBAC:
+   Security is enforced strictly on the backend. Authentication relies on Simple JWT tokens. To implement 
+   Role-Based Access Control without hardcoding permissions for every view, I built a custom permission 
+   class named `HasModelPermission`. It inspects the incoming request method—mapping GET to `view`, 
+   POST to `add`, PUT/PATCH to `change`, and DELETE to `delete`—and combines this with the view queryset's 
+   model name to evaluate `user.has_perm('app_label.action_modelname')`. Superadmins can assign staff members 
+   to roles like Product Manager or Order Manager using custom role management APIs (`/api/v1/auth/admin/users/{id}/assign-role/`).
+
+3. Data Integrity & Inventory Locking:
+   One of the biggest engineering challenges in e-commerce is handling flash sales or high-concurrency checkouts. 
+   If two requests hit the backend at the exact same millisecond for an item with 1 remaining stock, a standard 
+   query will suffer from a race condition. I solved this by wrapping the checkout process in `@transaction.atomic` 
+   and using `select_for_update()` on the `Inventory` table for the specific variant IDs in the cart. This forces 
+   the database to place an exclusive row lock. The second request must wait until the first transaction completes, 
+   ensuring stock is never over-allocated. Furthermore, I decoupled available stock from reserved stock using 
+   properties on the `Inventory` model (`quantity - reserved_quantity`).
+
+4. Address Snapshotting:
+   If a user updates their home address in their profile next month, historical invoice records for orders placed 
+   today must not change. To guarantee immutability, during checkout I serialize the current `Address` model instance 
+   into a flat JSON snapshot (`shipping_address` JSONField on the `Order` model).
+
+5. Payment Gateway Verification Flow:
+   For payments, I integrated Razorpay. When a user requests payment initialization, the backend calculates the order 
+   total, converts it to INR paise (e.g., 500.00 INR becomes 50000), and requests a `razorpay_order_id` from the Razorpay API. 
+   When the client completes payment on the frontend modal, Razorpay returns a `razorpay_payment_id` and a `razorpay_signature`. 
+   The client posts these credentials to `/api/v1/payments/verify/`. The backend uses `razorpay.Client.utility.verify_payment_signature` 
+   to compute an HMAC-SHA256 signature using our server-side secret key. Only if the signatures match is the payment marked 
+   as `SUCCESS` and the order status updated to `CONFIRMED` within an atomic transaction.
+
+6. Database Query Optimizations:
+   To prevent N+1 query problems across nested REST endpoints (such as retrieving products with their brands, categories, 
+   images, and variants), I heavily utilized Django ORM optimizations like `select_related('category', 'brand')` and 
+   `prefetch_related('images', 'variants')` inside ViewSet querysets. This reduced the database queries per request 
+   from dozens down to 2 or 3 queries."
+
+
+============================================================
+SECTION 2 - PROJECT ARCHITECTURE
+============================================================
+
+1. ARCHITECTURE COMPONENTS:
+   * Frontend: React SPA (communicates via REST API, uses Axios with request/response interceptors for Bearer JWT token header insertion and automatic refresh token handling).
+   * Backend: Django 5.x REST Framework API engine organized into feature-based apps (`accounts`, `catalog`, `inventory`, `cart`, `orders`, `payments`).
+   * API Layer: Versioned REST endpoints `/api/v1/` exposing JSON responses via DRF ViewSets and APIViews.
+   * Database Layer: Django ORM mapping relational entities to PostgreSQL/SQLite, enforcing foreign key integrity (`PROTECT`, `CASCADE`, `SET_NULL`) and unique constraints.
+   * AuthN Engine: Simple JWT (RS256/HS256) handling token generation, validation, and database blacklisting upon logout.
+   * AuthZ Engine: Dynamic RBAC checking user group memberships and model permissions via `HasModelPermission`.
+   * External Services: Razorpay API Client (`razorpay.Client`) for payment order initialization and HMAC signature verification.
+
+2. DETAILED STEP-BY-STEP DATA FLOW DIAGRAMS:
+
+[WORKFLOW A: ATOMIC CHECKOUT & STOCK RESERVATION]
+
+USER ACTION (Clicks "Place Order" in Cart UI)
+  |
+  V
+FRONTEND (Axios POST request to /api/v1/orders/checkout/ with shipping_address_id & Bearer Token)
+  |
+  V
+API LAYER (DRF CheckoutView validates JWT token & request payload structure)
+  |
+  V
+BACKEND VALIDATION (Checks shipping address exists and belongs to authenticated user)
+  |
+  V
+BUSINESS LOGIC / SERVICE LAYER (`create_order_from_cart` invoked inside @transaction.atomic)
+  |-- 1. Fetch Cart & CartItems for User
+  |-- 2. Execute DB Row-Level Lock: Inventory.objects.select_for_update().filter(variant_id__in=variant_ids)
+  |-- 3. Loop Cart Items: Check variant.is_active & cart_item.quantity <= (quantity - reserved_quantity)
+  |-- 4. Calculate Subtotal, Discounts, Shipping, Tax, Total Amount
+  |-- 5. Create Order Record with Address JSON Snapshot
+  |-- 6. Bulk Insert OrderItem Instances
+  |-- 7. Update Inventory: Increment reserved_quantity for locked inventory rows
+  |-- 8. Create OrderStatusHistory Log (Status = PENDING)
+  |-- 9. Delete CartItems from User's Cart
+  |
+  V
+DATABASE COMMIT (Transaction commits cleanly; Row locks released)
+  |
+  V
+API RESPONSE (Returns HTTP 201 Created with serialized Order JSON)
+  |
+  V
+FRONTEND UPDATE (Clears local cart state and redirects user to Payment step)
+
+
+[WORKFLOW B: RAZORPAY PAYMENT & Cryptographic Signature Verification]
+
+USER ACTION (Clicks "Pay Now" on Order Summary)
+  |
+  V
+FRONTEND (POST to /api/v1/payments/create-order/ with order_id)
+  |
+  V
+BACKEND SERVICE (`create_payment_order` service function)
+  |-- 1. Verify user owns order & order payment_status != PAID
+  |-- 2. Get/Create Payment DB object (status = CREATED)
+  |-- 3. Call Razorpay API: client.order.create(amount in paise, currency='INR', receipt=order_number)
+  |-- 4. Store gateway_order_id on Payment DB object (status = PENDING)
+  |
+  V
+FRONTEND RAZORPAY MODAL (Receives razorpay_order_id, opens Checkout Popup, captures User Card/UPI)
+  |
+  V
+RAZORPAY GATEWAY (Processes payment, returns razorpay_payment_id & razorpay_signature to client JS)
+  |
+  V
+FRONTEND (POST to /api/v1/payments/verify/ with payment_id, razorpay_order_id, razorpay_payment_id, razorpay_signature)
+  |
+  V
+BACKEND VERIFICATION SERVICE (`verify_payment` wrapped in @transaction.atomic)
+  |-- 1. Validate gateway_order_id matches DB record
+  |-- 2. Execute HMAC-SHA256 Cryptographic Check: client.utility.verify_payment_signature(...)
+  |-- 3. IF Signature Invalid: Set Payment status FAILED, raise ValidationError HTTP 400
+  |-- 4. IF Signature Valid: Update Payment transaction_id, status = SUCCESS, paid_at = now()
+  |-- 5. Create PaymentTransaction DB Log with full gateway_response JSON
+  |-- 6. Update Order record: payment_status = PAID, status = CONFIRMED
+  |
+  V
+DATABASE COMMIT (Transaction commits cleanly)
+  |
+  V
+API RESPONSE (Returns HTTP 200 OK with success payload)
+  |
+  V
+FRONTEND UPDATE (Displays Order Success screen with Order Number & Confirmation details)
+
+
+------------------------------------------------------------
+ARCHITECTURAL INTERVIEW QUESTIONS & ANSWERS
+------------------------------------------------------------
+
+Q1: Why did you choose a service-oriented layer in Django instead of putting all business logic inside Serializers or Views?
+SHORT INTERVIEW ANSWER:
+"I separated complex business logic into a dedicated service layer (`services.py`) to keep Views thin, single-responsibility, and reusable. Serializers should handle data validation and formatting, while Views handle HTTP requests and status codes. Multi-model transactional logic—like locking inventory, creating orders, snapshotting addresses, and generating audit logs—belongs in a service layer where it can be wrapped in `@transaction.atomic` and tested independently."
+
+DEEP TECHNICAL ANSWER:
+"Placing complex workflows inside DRF ViewSets or Serializers leads to fat controllers and tightly coupled code that is difficult to unit test without mocking HTTP requests. For example, order checkout (`create_order_from_cart`) touches 6 different models: `Cart`, `CartItem`, `Inventory`, `Order`, `OrderItem`, and `OrderStatusHistory`. Putting this in `Serializer.create()` obscures validation responsibilities and makes background task integration (e.g., Celery) difficult. By isolating this logic in `apps.orders.services`, I can call `create_order_from_cart` from a REST view, a CLI management command, an asynchronous queue, or a test runner cleanly."
+
+Q2: How does the system handle database concurrency during high-volume flash sales?
+SHORT INTERVIEW ANSWER:
+"We handle concurrency using database row-level locking with Django's `select_for_update()` inside atomic transactions. When a checkout starts, the service queries and locks the specific inventory rows for the items in the user's cart. Other concurrent transactions attempting to read/lock those same inventory rows must wait until the current transaction completes, preventing race conditions and over-allocation of stock."
+
+DEEP TECHNICAL ANSWER:
+"In high-concurrency environments, naive checks like `if inventory.quantity >= requested_qty:` suffer from race conditions (Time-of-Check to Time-of-Use bugs). Two simultaneous requests read quantity = 1, both pass validation, and both write back stock, resulting in negative stock. In `apps.orders.services`, I implemented:
+`Inventory.objects.select_for_update().filter(variant_id__in=variant_ids)`
+This emits a `SELECT ... FOR UPDATE` SQL query in PostgreSQL. The database engine acquires an exclusive lock on those specific inventory rows. If User B attempts to checkout the same variant simultaneously, User B's database query blocks until User A's transaction either commits or rolls back. Stock availability is calculated using `available_quantity = quantity - reserved_quantity`, ensuring 100% data consistency."
+
+
+============================================================
+SECTION 3 - TECHNOLOGY STACK QUESTIONS
+============================================================
+
+For every technology ACTUALLY used in the project:
+
+1. PYTHON (3.12+)
+   * WHY USED: Primary backend programming language offering high developer velocity, robust standard libraries, and seamless data processing capabilities.
+   * WHERE USED: Entire backend codebase (`manage.py`, `config/`, `apps/`).
+   * HOW IT WORKS: Executes the Django WSGI/ASGI web server runtime, object-oriented model definitions, services, and REST serializers.
+   * ALTERNATIVES: Node.js (TypeScript), Go, Java (Spring Boot).
+   * WHY SELECTED: Rich ecosystem for web development (Django), built-in security features, and clean syntax for complex business logic.
+   * LIMITATIONS: Single-threaded GIL (Global Interpreter Lock) for CPU-bound tasks (mitigated using async workers or Celery tasks).
+   * IF REMOVED: The entire backend system would cease to function and would need to be rewritten in another language.
+
+2. DJANGO (5.x) & DJANGO REST FRAMEWORK (DRF)
+   * WHY USED: Enterprise web framework providing ORM, migration system, built-in security, and administrative UI, combined with DRF for building RESTful APIs.
+   * WHERE USED: Project configuration (`config/settings.py`), Routing (`urls.py`), Models (`models.py`), Views (`views.py`), Serializers (`serializers.py`).
+   * HOW IT WORKS: Intercepts HTTP requests, routes them via URL resolvers, executes middleware, enforces permissions, processes request data via Serializers, and queries the DB via Django ORM.
+   * ALTERNATIVES: FastAPI, Flask + SQLAlchemy, Express.js.
+   * WHY SELECTED: Django provides out-of-the-box battery-included features (Admin, ORM, Auth, Groups, Migrations) which drastically reduced development time for complex e-commerce RBAC and relational schemas.
+   * LIMITATIONS: Heavier footprint compared to micro-frameworks like FastAPI.
+   * IF REMOVED: API routing, ORM model management, serializer validation, and Django Admin would be destroyed.
+
+3. SIMPLE JWT (`djangorestframework-simplejwt`)
+   * WHY USED: Provides stateless JSON Web Token authentication for REST APIs with support for access/refresh token pairs and database token blacklisting.
+   * WHERE USED: `config/settings.py`, `config/urls.py`, `apps/accounts/views.py` (`TokenObtainPairView`, `TokenRefreshView`, `LogoutView`).
+   * HOW IT WORKS: Upon login, generates a short-lived access token (e.g., 15-60 mins) and a long-lived refresh token. On logout, the refresh token's JTI (JWT ID) is written to the `token_blacklist` database table.
+   * ALTERNATIVES: Session-based cookies, OAuth2 (Django OAuth Toolkit), Knox tokens.
+   * WHY SELECTED: Standard industry practice for decoupled Single Page Applications (React) where client apps store tokens in memory/storage without server session state overhead.
+   * LIMITATIONS: Revoking access tokens immediately before expiration requires short expiration windows or token verification middleware.
+   * IF REMOVED: Users would lose stateless authentication, and the backend would have to fall back to session cookies.
+
+4. POSTGRESQL / SQLITE3 (Django ORM)
+   * WHY USED: Relational database management system providing ACID compliance for order processing, financial payments, and stock inventory.
+   * WHERE USED: Database settings in `config/settings.py`, executed across all ORM models.
+   * HOW IT WORKS: Django ORM translates Python model operations (`filter()`, `select_for_update()`, `prefetch_related()`) into optimized SQL queries.
+   * ALTERNATIVES: MySQL, MongoDB.
+   * WHY SELECTED: PostgreSQL is the most robust open-source relational database with native support for JSON fields (`JSONField`), row locking, and complex constraints. SQLite is used in local development for zero-config portability.
+   * LIMITATIONS: Relational databases require strict schema migration management.
+   * IF REMOVED: Persistent data storage for users, catalog, cart, orders, and payments would be completely missing.
+
+5. RAZORPAY PYTHON SDK (`razorpay`)
+   * WHY USED: Off-the-shelf payment gateway integration for processing online card, UPI, net banking, and wallet transactions in India.
+   * WHERE USED: `apps/payments/services.py` (`get_razorpay_client`, `create_payment_order`, `verify_payment`).
+   * HOW IT WORKS: Communicates with Razorpay REST APIs to create order sessions in paise, and validates client payment signatures via HMAC-SHA256 cryptographic check.
+   * ALTERNATIVES: Stripe, PayPal, Cashfree.
+   * WHY SELECTED: Dominant payment gateway for Indian e-commerce with seamless UPI support and native Python SDK support.
+   * LIMITATIONS: Restricted to currencies and regulatory environments supported by Razorpay.
+   * IF REMOVED: Online payment processing would fail; platform would be restricted to Cash on Delivery (COD).
+
+6. REACT + AXIOS + REACT ROUTER (Frontend Integration Stack)
+   * WHY USED: Modern component-driven Single Page Application framework to render dynamic product catalogs, cart states, checkout forms, and user dashboards.
+   * WHERE USED: Decoupled client application located in `frontend/` communicating with `/api/v1/`.
+   * HOW IT WORKS: Axios intercepts API requests to append `Authorization: Bearer <access_token>` headers and handles automatic token refresh requests upon HTTP 401 responses.
+   * ALTERNATIVES: Vue.js, Next.js, Angular, Django HTML Templates.
+   * WHY SELECTED: High performance, rich component ecosystem, smooth user interface rendering without full page reloads.
+   * LIMITATIONS: Requires careful state management for synchronization between client cart state and backend inventory.
+   * IF REMOVED: Users would have to interact with raw JSON API endpoints via Postman or cURL.
+
+
+============================================================
+SECTION 4 - FEATURE-BY-FEATURE QUESTIONS
+============================================================
+
+FEATURE 1: AUTHENTICATION & USER MANAGEMENT
+* WHAT IT DOES: Custom user creation with email authentication, profile management, address book CRUD, and staff role assignment.
+* IMPLEMENTATION: Custom `User` model inheriting `AbstractUser` with `email` as unique login field (`USERNAME_FIELD = "email"`). Profile endpoints using `ProfileView` and address CRUD using `AddressListCreateView` and `AddressDetailView`.
+* IMPORTANT FILES:
+  - `backend/apps/accounts/models.py`
+  - `backend/apps/accounts/views.py`
+  - `backend/apps/accounts/serializers.py`
+  - `backend/apps/accounts/urls.py`
+
+INTERVIEW QUESTIONS:
+Q1: Why did you create a custom User model instead of using Django's default User?
+ANSWER: Django's default User model uses `username` as the primary identifier. Modern e-commerce platforms require authentication via `email`. Extending `AbstractUser` at project start allowed set `email` as unique, add fields like `phone`, `profile_image`, `is_customer`, and avoid costly database migration refactoring later.
+
+FOLLOW-UP: What happens if you try to change to a custom User model after running migrations in a Django project?
+ANSWER: Changing `AUTH_USER_MODEL` midway through a project breaks existing foreign key relationships across migration history. It requires wiping migrations and the database or performing complex custom SQL migration surgery. That is why creating a custom user model upfront is a Django best practice.
+
+
+FEATURE 2: DYNAMIC ROLE-BASED ACCESS CONTROL (RBAC)
+* WHAT IT DOES: Restricts administrative APIs to specific staff roles (Product Manager, Order Manager, Inventory Manager, Super Admin).
+* IMPLEMENTATION: Built custom `HasModelPermission(BasePermission)` which inspects `view.queryset.model` and maps HTTP methods (`GET` -> `view`, `POST` -> `add`, `PUT` -> `change`, `DELETE` -> `delete`) to dynamically call `request.user.has_perm(permission_name)`. Super Admins assign users to Django `Group`s via `/api/v1/auth/admin/users/{id}/assign-role/`.
+* IMPORTANT FILES:
+  - `backend/apps/accounts/permissions.py`
+  - `backend/apps/accounts/views.py`
+  - `backend/apps/accounts/serializers.py`
+
+INTERVIEW QUESTIONS:
+Q2: How does `HasModelPermission` dynamically check permissions without hardcoding them in views?
+ANSWER: `HasModelPermission` extracts the model class directly from `view.queryset.model`. It maps the incoming HTTP method to Django's standard permission prefixes (`view`, `add`, `change`, `delete`). It formats the string `app_label.action_modelname` (e.g., `catalog.add_brand`) and checks if the user possesses that permission directly or via Django Group membership.
+
+FOLLOW-UP: What happens if a view does not define a `queryset` attribute?
+ANSWER: If a view does not define `queryset` (such as a generic `APIView`), accessing `view.queryset.model` raises an `AttributeError`. To handle such views, we must either override `get_queryset()`, explicitly set `queryset` on the view, or pass specific permission classes like `IsSuperAdmin` or `IsAuthenticated`.
+
+
+FEATURE 3: PRODUCT CATALOG & VARIANTS ARCHITECTURE
+* WHAT IT DOES: Manages multi-level categories with self-referencing parents, brands with auto-slug generation, products, product gallery images, attributes (Color, Size), attribute values (Red, XL), and product variants with distinct SKUs and prices.
+* IMPLEMENTATION: `Category` uses `models.ForeignKey("self", on_delete=models.PROTECT)`. `Brand` and `Category` auto-slugify in `save()`. `ProductVariant` links to `Product` via ForeignKey and `AttributeValue` via `ManyToManyField`.
+* IMPORTANT FILES:
+  - `backend/apps/catalog/models.py`
+  - `backend/apps/catalog/views.py`
+  - `backend/apps/catalog/serializers.py`
+
+INTERVIEW QUESTIONS:
+Q3: Why is `Category` set to `on_delete=models.PROTECT` on its parent relationship?
+ANSWER: `models.PROTECT` prevents a parent category (e.g., "Electronics") from being deleted if child categories (e.g., "Laptops", "Smartphones") or products are attached to it. Attempting to delete it raises Django's `ProtectedError`, ensuring catalog hierarchy and data integrity.
+
+FOLLOW-UP: How do you prevent N+1 query overhead when fetching a list of products with their images and variants?
+ANSWER: In `ProductViewSet`, I configured `queryset` with `select_related("category", "brand")` to perform SQL `JOIN`s for single-valued relationships, and `prefetch_related("images", "variants")` to fetch multi-valued relations in bulk queries, reducing DB operations from N+1 down to 3 queries regardless of item count.
+
+
+FEATURE 4: ATOMIC CHECKOUT & INVENTORY RESERVATION SERVICE
+* WHAT IT DOES: Validates user cart items, locks inventory rows, verifies stock, calculates order pricing, snapshots shipping address, creates order items, reserves stock, and clears cart.
+* IMPLEMENTATION: Service function `create_order_from_cart` in `apps.orders.services` decorated with `@transaction.atomic` using `select_for_update()`.
+* IMPORTANT FILES:
+  - `backend/apps/orders/services.py`
+  - `backend/apps/orders/views.py`
+  - `backend/apps/inventory/models.py`
+
+INTERVIEW QUESTIONS:
+Q4: Explain line-by-line what happens when two users checkout the last stock unit of a variant at the exact same time.
+ANSWER: User A and User B submit requests simultaneously. Both enter `create_order_from_cart` inside atomic transactions. The line `Inventory.objects.select_for_update().filter(...)` executes SQL `SELECT ... FOR UPDATE`. The database grants the lock to User A first. User B's DB query pauses on the locked row. User A's transaction checks stock (`quantity - reserved_quantity >= 1`), succeeds, creates order, increments `reserved_quantity`, and commits. Lock releases. User B's query unblocks, reads updated `reserved_quantity`, checks stock (`available_quantity == 0`), raises `ValidationError("Only 0 units available")`, and rolls back. Overbooking is mathematically impossible.
+
+FOLLOW-UP: Why do you store `reserved_quantity` separately from `quantity` in the Inventory model?
+ANSWER: Keeping `quantity` (total physical stock in warehouse) separate from `reserved_quantity` (stock held for pending/unpaid orders) allows clear stock visibility. When an order is shipped, `quantity` is decremented and `reserved_quantity` is decremented. If an unpaid order is cancelled, we simply decrement `reserved_quantity` without altering physical inventory logs.
+
+
+FEATURE 5: RAZORPAY PAYMENT & HMAC SIGNATURE VERIFICATION
+* WHAT IT DOES: Creates Razorpay payment orders in paise, launches frontend payment modal, and cryptographically verifies server-side signature before updating order to PAID.
+* IMPLEMENTATION: `create_payment_order` converts amount (`int(Decimal(total_amount) * 100)`). `verify_payment` executes `client.utility.verify_payment_signature(...)`.
+* IMPORTANT FILES:
+  - `backend/apps/payments/services.py`
+  - `backend/apps/payments/views.py`
+  - `backend/apps/payments/models.py`
+
+INTERVIEW QUESTIONS:
+Q5: Why do we convert `order.total_amount` to an integer multiplied by 100 before calling Razorpay?
+ANSWER: Financial payment gateways like Razorpay require order amounts in the smallest currency sub-unit to avoid floating-point arithmetic errors. In Indian Rupees (INR), the smallest sub-unit is paise (1 INR = 100 paise). Passing floating-point numbers like `499.99` in JSON leads to rounding errors. Converting `Decimal("499.99") * 100` yields integer `49999`.
+
+FOLLOW-UP: Why can't we trust the frontend success callback when Razorpay completes payment on the client side?
+ANSWER: Client-side JavaScript execution can be intercepted, modified, or forged by a malicious user using browser console or tools like Postman. A attacker could mock a success response without paying. Server-side HMAC-SHA256 verification uses our secret key (`RAZORPAY_KEY_SECRET`) to verify the signature generated by Razorpay. If the payload was tampered with, signature verification fails and payment is rejected.
+
+
+============================================================
+SECTION 5 - BACKEND INTERVIEW QUESTIONS
+============================================================
+
+Q1: What is the difference between `APIView`, `GenericAPIView`, `ListCreateAPIView`, and `ModelViewSet` in DRF, and where did you use each in this project?
+ANSWER: 
+* `APIView`: Base class providing basic HTTP method handlers (`get`, `post`, `put`, `delete`). Used in `RegisterView`, `LogoutView`, `CheckoutView`, `ChangePasswordView` for custom procedural logic.
+* `GenericAPIView`: Extends `APIView` with standard helper methods (`get_queryset`, `get_serializer`).
+* `ListCreateAPIView` / `RetrieveUpdateDestroyAPIView`: Concrete view helpers for listing/creating and retrieving/updating/deleting. Used in `AddressListCreateView` and `AddressDetailView`.
+* `ModelViewSet`: Combines list, create, retrieve, update, and destroy actions into a single class driven by routers. Used in `CategoryViewSet`, `BrandViewSet`, `ProductViewSet` for clean RESTful CRUD.
+
+Q2: How does `select_related` differ from `prefetch_related` in Django ORM?
+ANSWER:
+* `select_related`: Works by creating an SQL `JOIN` query and bringing back fields of the related object in the single database query. Works on single-valued relationships: `ForeignKey` and `OneToOneField`. (Used in `ProductViewSet` for `category` and `brand`).
+* `prefetch_related`: Performs a separate SQL query for each relationship and does the joining in Python. Works on multi-valued relationships: `ManyToManyField` and reverse `ForeignKey`. (Used in `ProductViewSet` for `images` and `variants`).
+
+Q3: How are status codes used across backend responses?
+ANSWER:
+* `200 OK`: Successful retrieval or action completion (e.g., login success, profile update).
+* `201 Created`: Successful creation of a resource (e.g., user registration, order checkout).
+* `400 Bad Request`: Validation failures (e.g., insufficient stock, invalid refresh token, incorrect password).
+* `401 Unauthorized`: Unauthenticated request (missing or invalid JWT access token).
+* `403 Forbidden`: Authenticated user lacks RBAC permission (`HasModelPermission` or `IsSuperAdmin` rejection).
+* `404 Not Found`: Resource does not exist (e.g., invalid address ID during checkout).
+
+Q4: What is the benefit of defining `related_name` on ForeignKeys throughout your models?
+ANSWER: `related_name` specifies the reverse relation attribute on the target model. For example, `related_name="orders"` on `Order.user` lets us access a user's orders via `user.orders.all()` instead of `user.order_set.all()`. It makes ORM queries more readable and avoids attribute name collisions in prefetching.
+
+Q5: Where is input data validation enforced in the backend architecture?
+ANSWER: Validation occurs at three distinct layers:
+1. Serializer Field Types & Validators (`EmailField`, `UniqueConstraint`, custom `validate()` methods).
+2. Service Layer Checks (business rule validations like checking `variant.is_active` and `available_quantity` in `services.py`).
+3. Database Model Constraints (`unique=True`, `UniqueConstraint(fields=['cart', 'variant'])` in PostgreSQL/SQLite).
+
+
+============================================================
+SECTION 6 - FRONTEND INTERVIEW QUESTIONS
+============================================================
+
+Note: The frontend stack is designed as a React SPA interfacing with the DRF REST endpoints.
+
+Q1: How does Axios handle JWT access and refresh token management?
+ANSWER: Axios uses Request and Response Interceptors. 
+1. Request Interceptor: Before every outgoing HTTP request, reads the stored `access_token` from memory/storage and attaches `Authorization: Bearer <access_token>` header.
+2. Response Interceptor: Listens for HTTP `401 Unauthorized` responses. When detected, pauses queued requests, sends a POST request to `/api/v1/auth/token/refresh/` with the stored `refresh_token`, receives a new `access_token`, updates client state, and retries the original request seamlessly.
+
+Q2: How are protected routes implemented in React Router?
+ANSWER: We wrap protected page components (e.g., Checkout, Profile, Order History) inside a `<ProtectedRoute>` wrapper. The wrapper checks the global Auth context/state. If authenticated, it renders the child components; if unauthenticated, it redirects the user to `/login` with `state: { from: location }` to allow post-login redirection.
+
+Q3: How is local Cart state synchronized with backend Inventory?
+ANSWER: Local cart state (items, quantities) is updated optimistically in the UI for immediate user feedback. When quantity changes occur, API calls hit `/api/v1/cart/items/{id}/`. If the backend returns HTTP 400 (e.g. "Only 2 units available"), the client reverts local state to the actual server quantity and displays a notification toast.
+
+Q4: How do you handle loading states and error messages during checkout submission?
+ANSWER: Checkout component maintains `isSubmitting` state set to `true` on form submit. This disables the submit button to prevent duplicate submissions. If the API returns success (201 Created), state clears and redirects. If an error occurs (400 ValidationError), `isSubmitting` resets to `false` and field-level validation errors (e.g., address selection error) are rendered beneath the input fields.
+
+
+============================================================
+SECTION 7 - API INTERVIEW QUESTIONS
+============================================================
+
+API 1: AUTHENTICATION TOKEN OBTAIN
+* METHOD & ENDPOINT : POST `/api/v1/auth/token/`
+* PURPOSE           : Authenticates user credentials and returns JWT access and refresh tokens.
+* REQUEST BODY      : `{"email": "user@example.com", "password": "securepassword"}`
+* AUTHENTICATION    : Public (`AllowAny`)
+* VALIDATION        : Validates email format and verifies password hash using Django's `check_password`.
+* BUSINESS LOGIC    : Executes `TokenObtainPairView` / `LoginSerializer` to output tokens and user profile payload.
+* DATABASE OPER     : `SELECT` query on `accounts_user` table filtering by email.
+* RESPONSE (200 OK) : `{"access": "<jwt_access>", "refresh": "<jwt_refresh>", "user": {"id": 1, "email": "..."}}`
+* ERROR CASES       : 401 Unauthorized for invalid email/password combination.
+
+API 2: ATOMIC CART CHECKOUT
+* METHOD & ENDPOINT : POST `/api/v1/orders/checkout/`
+* PURPOSE           : Processes active cart into an Order, locks inventory, snapshots address, and reserves stock.
+* REQUEST BODY      : `{"shipping_address_id": 5, "billing_address_id": 5, "notes": "Handle with care"}`
+* AUTHENTICATION    : Required (`IsAuthenticated`)
+* VALIDATION        : Checks `shipping_address_id` exists and belongs to user; validates cart is non-empty.
+* BUSINESS LOGIC    : Invokes `create_order_from_cart()` inside `@transaction.atomic` with `select_for_update()`.
+* DATABASE OPER     : `SELECT ... FOR UPDATE` on `Inventory`, `INSERT` into `Order`, `OrderItem`, `OrderStatusHistory`, `UPDATE` `Inventory`, `DELETE` `CartItem`.
+* RESPONSE (201)    : `{"message": "Order created successfully.", "order": {"id": 12, "order_number": "ORD-A1B2C3D4E5F6", "total_amount": "1499.00"}}`
+* ERROR CASES       : 400 Bad Request if cart empty, address invalid, or stock unavailable.
+
+API 3: RAZORPAY PAYMENT VERIFICATION
+* METHOD & ENDPOINT : POST `/api/v1/payments/verify/`
+* PURPOSE           : Verifies HMAC signature returned by Razorpay after client payment completion.
+* REQUEST BODY      : `{"payment_id": 4, "razorpay_order_id": "order_K12345", "razorpay_payment_id": "pay_K67890", "razorpay_signature": "a8f3b..."}`
+* AUTHENTICATION    : Required (`IsAuthenticated`)
+* VALIDATION        : Validates payment record matches `razorpay_order_id`.
+* BUSINESS LOGIC    : `verify_payment()` calls `razorpay.Client.utility.verify_payment_signature()`. On success, sets Payment `SUCCESS`, Order `PAID` & `CONFIRMED`.
+* DATABASE OPER     : `UPDATE` on `Payment`, `INSERT` into `PaymentTransaction`, `UPDATE` on `Order`.
+* RESPONSE (200 OK) : `{"message": "Payment verified successfully.", "status": "success"}`
+* ERROR CASES       : 400 Bad Request if signature verification fails.
+
+
+============================================================
+SECTION 8 - DATABASE INTERVIEW QUESTIONS
+============================================================
+
+1. KEY MODELS & RELATIONSHIPS:
+
+   * `User` (`apps.accounts.models.User`)
+     - Purpose: Stores authentication credentials, profile data, and staff status.
+     - Key Fields: `email` (Unique), `phone`, `profile_image`, `is_customer`, `is_staff`, `is_superuser`.
+
+   * `Address` (`apps.accounts.models.Address`)
+     - Relationship: `ForeignKey(User, on_delete=models.CASCADE, related_name="addresses")`.
+     - Key Fields: `address_type`, `full_name`, `address_line_1`, `city`, `state`, `postal_code`, `is_default`.
+
+   * `Product` (`apps.catalog.models.Product`)
+     - Relationships: `ForeignKey(Category, on_delete=models.PROTECT)`, `ForeignKey(Brand, on_delete=models.SET_NULL, null=True)`.
+     - Key Fields: `name`, `slug` (Unique), `sku` (Unique), `mrp`, `selling_price`, `is_active`.
+
+   * `ProductVariant` (`apps.catalog.models.ProductVariant`)
+     - Relationships: `ForeignKey(Product, on_delete=models.CASCADE, related_name="variants")`, `ManyToManyField(AttributeValue, related_name="variants")`.
+     - Key Fields: `sku` (Unique), `price` (Optional override price).
+
+   * `Inventory` (`apps.inventory.models.Inventory`)
+     - Relationship: `OneToOneField(ProductVariant, on_delete=models.CASCADE, related_name="inventory")`.
+     - Key Fields: `quantity`, `reserved_quantity`, `low_stock_threshold`.
+     - Properties: `available_quantity` (`max(quantity - reserved_quantity, 0)`).
+
+   * `CartItem` (`apps.cart.models.CartItem`)
+     - Constraints: `models.UniqueConstraint(fields=["cart", "variant"], name="unique_cart_variant")`.
+     - Prevents duplicate rows for the same variant in a cart.
+
+   * `Order` (`apps.orders.models.Order`)
+     - Relationship: `ForeignKey(User, on_delete=models.PROTECT, related_name="orders")`.
+     - Key Fields: `order_number` (Unique), `status`, `payment_status`, `total_amount`, `shipping_address` (JSONField).
+
+   * `Payment` (`apps.payments.models.Payment`)
+     - Relationship: `OneToOneField(Order, on_delete=models.PROTECT, related_name="payment")`.
+     - Key Fields: `payment_method`, `gateway_order_id`, `transaction_id`, `amount`, `status`.
+
+2. DATABASE DESIGN QUESTIONS & ANSWERS:
+
+Q1: Why did you use `on_delete=models.PROTECT` on `Order.user` and `OrderItem.variant` instead of `models.CASCADE`?
+ANSWER: If a user deletes their account or an admin deletes a product variant, using `models.CASCADE` would delete historical orders and order items from the database. This would destroy accounting records and violate financial reporting integrity. `models.PROTECT` blocks deletion of referenced entities as long as order records exist.
+
+Q2: Why did you use a `JSONField` for `shipping_address` on the `Order` model instead of a ForeignKey to the `Address` table?
+ANSWER: Addresses in user profiles are mutable—users frequently edit street names or phone numbers. If `Order` referenced `Address` via ForeignKey, an address update next year would alter historical past order invoices. Storing a serialized JSON snapshot directly in `shipping_address` guarantees that past order records remain completely immutable.
+
+
+============================================================
+SECTION 9 - AUTHENTICATION & AUTHORIZATION
+============================================================
+
+1. LOGIN & JWT FLOW:
+   * Client POSTs email & password to `/api/v1/auth/token/`.
+   * Django verifies password against stored PBKDF2 hash.
+   * `Simple JWT` generates Access Token (payload: user_id, exp, token_type='access') and Refresh Token (payload: user_id, exp, jti, token_type='refresh').
+   * Client stores Access Token in memory/state and Refresh Token in HttpOnly cookie or secure storage.
+   * Subsequent API calls attach `Authorization: Bearer <access_token>`.
+
+2. LOGOUT & TOKEN BLACKLISTING:
+   * Client POSTs refresh token to `/api/v1/auth/logout/`.
+   * `LogoutView` validates token and calls `token.blacklist()`.
+   * `Simple JWT` inserts the token's unique identifier (`jti`) into the `token_blacklist_blacklistedtoken` database table.
+   * If an attacker attempts to reuse that refresh token at `/api/v1/auth/token/refresh/`, Simple JWT queries the blacklist table, rejects the request with HTTP 400 "Token is blacklisted", and blocks token renewal.
+
+3. RBAC INTEGRATION (`HasModelPermission`):
+   * Inspects `request.user`. If user is `is_superuser`, grants access immediately (`return True`).
+   * Extracts model from `view.queryset.model`.
+   * Maps request HTTP method:
+     - `GET`    -> `"view"`
+     - `POST`   -> `"add"`
+     - `PUT`/`PATCH` -> `"change"`
+     - `DELETE` -> `"delete"`
+   * Constructs permission string: `f"{model._meta.app_label}.{action}_{model._meta.model_name}"` (e.g. `catalog.add_category`).
+   * Evaluates `request.user.has_perm(permission_name)`. If user belongs to a Group ("Product Manager") that holds `catalog.add_category`, request is authorized.
+
+
+============================================================
+SECTION 10 - SECURITY QUESTIONS
+============================================================
+
+Q1: How are passwords stored securely in the database?
+ANSWER: Django hashes passwords using PBKDF2 with a SHA256 hash algorithm and a unique per-user salt. Passwords are never stored in plain text.
+
+Q2: How does the backend prevent SQL Injection attacks?
+ANSWER: All database interactions are routed through Django ORM's parameterized queries. Input values passed to `.filter()`, `.get()`, or `.create()` are properly escaped by the database driver, eliminating SQL injection risks.
+
+Q3: How is server-side payment verification secured against tampering?
+ANSWER: When Razorpay returns payment identifiers (`razorpay_order_id`, `razorpay_payment_id`, `razorpay_signature`), `verify_payment` calculates an HMAC-SHA256 hash of `order_id + "|" + payment_id` using our secret `RAZORPAY_KEY_SECRET`. If the calculated hash does not match `razorpay_signature` character-for-character, the request is rejected as tampered.
+
+Q4: [POTENTIAL WEAKNESS] What happens if CORS is misconfigured in production settings?
+ANSWER: [POTENTIAL WEAKNESS] If `CORS_ALLOW_ALL_ORIGINS = True` is left enabled in production, malicious third-party websites can make authenticated API requests on behalf of users if tokens are stored insecurely.
+HOW TO IMPROVE IT: Restrict `CORS_ALLOWED_ORIGINS` strictly to our trusted frontend domains (e.g. `https://shop.example.com`).
+
+Q5: [POTENTIAL WEAKNESS] Are JWT access tokens revokable before expiration?
+ANSWER: [POTENTIAL WEAKNESS] Standard JWT access tokens are stateless and validated via cryptographic signature without DB lookup. If an access token is leaked, it remains valid until its 15-minute expiration.
+HOW TO IMPROVE IT: Keep access token lifetime short (e.g., 5-10 minutes) and use Redis token revocation lists for high-security environments.
+
+
+============================================================
+SECTION 11 - DEBUGGING SCENARIOS
+============================================================
+
+SCENARIO 1: Inventory stock becomes negative after multiple concurrent checkouts.
+* ROOT CAUSE: Omission of row-level locking (`select_for_update`) or executing inventory checks outside an atomic transaction.
+* HOW TO DEBUG: Inspect SQL query logs (`django.db.connection.queries`) during concurrent load test to check if `FOR UPDATE` is present.
+* FILES TO CHECK: `backend/apps/orders/services.py`
+* FIX: Wrap checkout in `@transaction.atomic` and query inventory via `Inventory.objects.select_for_update().filter(...)`.
+
+SCENARIO 2: Razorpay payment signature verification fails in production while succeeding in test mode.
+* ROOT CAUSE: Mismatch between `RAZORPAY_KEY_SECRET` in production `.env` and test credentials, or passing `order_id` instead of `razorpay_order_id`.
+* HOW TO DEBUG: Log incoming `gateway_order_id` vs Razorpay response payload; inspect server environment variables.
+* FILES TO CHECK: `backend/apps/payments/services.py`, `backend/config/settings.py`
+* FIX: Verify environment variables match live Razorpay dashboard keys exactly.
+
+SCENARIO 3: Staff member assigned to "Product Manager" group gets HTTP 403 Forbidden when deleting a brand.
+* ROOT CAUSE: Django group missing the `catalog.delete_brand` permission, or view missing `queryset` attribute required by `HasModelPermission`.
+* HOW TO DEBUG: Print `request.user.get_all_permissions()` in custom permission class breakpoint.
+* FILES TO CHECK: `backend/apps/accounts/permissions.py`, `backend/apps/catalog/views.py`
+* FIX: Ensure `BrandViewSet` has `queryset = Brand.objects.all()` and assign `catalog.delete_brand` permission to the group in Django Admin.
+
+
+============================================================
+SECTION 12 - PERFORMANCE QUESTIONS
+============================================================
+
+Q1: What is the biggest performance bottleneck in your catalog API and how did you resolve it?
+ANSWER: 
+CURRENT IMPLEMENTATION: When fetching 50 products with variants and gallery images, a naive view performs 1 query for products, 50 queries for categories, 50 queries for brands, 50 queries for image sets, and 50 queries for variant sets—totaling 201 database queries (N+1 problem).
+POSSIBLE IMPROVEMENT / ACTUAL FIX: In `ProductViewSet`, I configured `select_related('category', 'brand')` and `prefetch_related('images', 'variants')`. This reduced DB queries to exactly 3 SQL queries total regardless of product count.
+
+Q2: How does `select_for_update()` affect database throughput during peak sales?
+ANSWER:
+CURRENT IMPLEMENTATION: Row-level locks hold specific inventory rows for the duration of the checkout transaction. If 1,000 users buy 1,000 *different* products, DB queries run in parallel with zero contention. If 1,000 users buy the *same* popular product, requests queue sequentially on that single row.
+POSSIBLE IMPROVEMENT: Integrate Redis to handle high-frequency stock reservations in memory before persisting to PostgreSQL asynchronously via Celery.
+
+
+============================================================
+SECTION 13 - EDGE CASE QUESTIONS
+============================================================
+
+EDGE CASE 1: User submits checkout request with an empty cart.
+* WHAT HAPPENS NOW: `create_order_from_cart` fetches cart items, detects `if not cart_items:`, and raises `ValidationError("Your cart is empty.")`, returning HTTP 400.
+* WHAT SHOULD HAPPEN: Correct behavior implemented.
+
+EDGE CASE 2: Payment succeeds on Razorpay popup, but user closes browser window before `verify_payment` API call completes.
+* WHAT HAPPENS NOW: Payment status remains `PENDING` on backend because frontend callback never hit `/verify/`.
+* WHAT SHOULD HAPPEN: Implement Razorpay Webhooks (`payment.captured` event) listening on a public webhook endpoint (`/api/v1/payments/webhook/`) so Razorpay notifies our server asynchronously even if the user closes their browser.
+
+EDGE CASE 3: Product price is updated by an admin while a customer has the item in their cart.
+* WHAT HAPPENS NOW: In `create_order_from_cart`, price is calculated dynamically from the current `variant.price` or `product.selling_price` at the moment of checkout, NOT from stale client cart data.
+* WHAT SHOULD HAPPEN: Correct behavior implemented—backend price is authoritative.
+
+
+============================================================
+SECTION 14 - "WHY DID YOU DO THIS?" QUESTIONS
+============================================================
+
+QUESTION 1: Why did you implement a separate `services.py` module for checkout instead of using `Serializer.create()`?
+ANSWER: Ordering is a multi-domain workflow involving carts, inventory locking, address snapshotting, order creation, item breakdown, and status logging. DRF Serializers are designed for single-entity validation and transformation. Packing 150 lines of multi-model transactional orchestration inside `OrderSerializer.create()` violates Single Responsibility Principle and hinders reusability.
+
+ALTERNATIVE: Writing all creation logic inside `OrderSerializer.create()`.
+WHY NOT THE ALTERNATIVE: Serializer unit testing requires constructing complex nested JSON request contexts; calling checkout logic from CLI or webhooks becomes clunky.
+TRADEOFF: Introducing `services.py` adds an extra architectural layer, but significantly improves maintainability and testability.
+
+QUESTION 2: Why did you choose JWT authentication with token blacklisting over traditional Django session cookies?
+ANSWER: Single Page Applications (React) built as decoupled frontends operate cleaner when using stateless authorization headers (`Bearer <token>`). Session cookies require managing CSRF tokens and sharing domain cookie policies across subdomains. JWT blacklisting bridges the gap between stateless tokens and immediate revokability upon logout.
+
+ALTERNATIVE: Django session cookies (`django.contrib.sessions`).
+WHY NOT THE ALTERNATIVE: Harder to scale across cross-origin single-page applications and mobile app clients.
+TRADEOFF: Database lookup required on logout to record blacklisted tokens.
+
+
+============================================================
+SECTION 15 - CODE EXPLANATION QUESTIONS
+============================================================
+
+FILE 1: `backend/apps/orders/services.py`
+* WHAT IT DOES: Contains atomic transaction services for checkout order creation and order number generation.
+* CODE EXPLANATION (Lines 11-174):
+  - `@transaction.atomic`: Decorator ensuring all database writes commit together or roll back on error.
+  - `Cart.objects.prefetch_related(...).get(user=user)`: Fetches user's active cart and prefetches items with variant and product relations.
+  - `Inventory.objects.select_for_update().filter(variant_id__in=variant_ids)`: Issues SQL `SELECT ... FOR UPDATE` to lock inventory rows.
+  - `available_quantity = inventory.quantity - inventory.reserved_quantity`: Calculates real-time available stock.
+  - `Order.objects.create(...)`: Inserts Order record with JSON address snapshot.
+  - `inventory.reserved_quantity += cart_item.quantity`: Increments reserved stock.
+  - `cart.items.all().delete()`: Empties cart upon successful order creation.
+
+FILE 2: `backend/apps/accounts/permissions.py`
+* WHAT IT DOES: Defines dynamic model permission class `HasModelPermission` and superadmin check `IsSuperAdmin`.
+* CODE EXPLANATION (Lines 22-62):
+  - `model = view.queryset.model`: Extracts Django model class from DRF view.
+  - `request.method`: Maps HTTP verb (GET -> view, POST -> add, PUT -> change, DELETE -> delete).
+  - `permission_name = f"{model._meta.app_label}.{action}_{model._meta.model_name}"`: Constructs canonical permission string.
+  - `request.user.has_perm(permission_name)`: Queries Django Auth permission system for user/group rights.
+
+FILE 3: `backend/apps/payments/services.py`
+* WHAT IT DOES: Manages Razorpay client initialization, payment order creation in paise, and HMAC signature verification.
+* CODE EXPLANATION (Lines 83-178):
+  - `client.utility.verify_payment_signature(...)`: Executes cryptographic HMAC SHA256 verification using server secret.
+  - `PaymentTransaction.objects.create(...)`: Audits raw Razorpay response payload into JSON field.
+  - `order.payment_status = Order.PaymentStatus.PAID`: Updates parent order status to PAID and CONFIRMED.
+
+
+============================================================
+SECTION 16 - RESUME QUESTIONS & CLAIMS
+============================================================
+
+RESUME CLAIM 1: "Architected scalable E-Commerce REST API with custom RBAC permissions."
+* INTERVIEWER: How did you implement RBAC without duplicating permission logic across views?
+* ANSWER: I created `HasModelPermission` which dynamically inspects the DRF view's model and incoming HTTP method, mapping GET/POST/PUT/DELETE to Django's `view_`, `add_`, `change_`, `delete_` permissions. Staff users are placed into Django Groups (e.g. Product Manager), eliminating hardcoded permission checks in views.
+
+RESUME CLAIM 2: "Engineered high-concurrency checkout engine preventing inventory overbooking."
+* INTERVIEWER: How did you prove that your checkout handles concurrent buyers?
+* ANSWER: I wrapped `create_order_from_cart` in `@transaction.atomic` and used `Inventory.objects.select_for_update()`. This forces PostgreSQL to place an exclusive row-level lock on inventory records during checkout, making concurrent attempts queue up and preventing race conditions.
+
+
+============================================================
+SECTION 17 - AI-ASSISTED PROJECT QUESTIONS
+============================================================
+
+Q1: Did you use AI tools while building this project?
+ANSWER: "Yes, I used AI tools as a pair programmer to speed up boilerplate code generation (such as initial DRF serializers and administrative model registrations). However, all architectural decisions—such as database schema design, atomic transaction boundaries, row-level locking with `select_for_update`, dynamic permission classes, and HMAC payment signature verification—were designed, manually implemented, and verified by me."
+
+Q2: Can you give an example of a bug AI generated and how you fixed it?
+ANSWER: "When generating initial checkout logic, the AI suggested updating `inventory.quantity` directly (`quantity -= cart_item.quantity`) before payment confirmation. I realized this was incorrect for an e-commerce workflow because unpaid/cancelled carts would permanently deduct physical stock. I refactored the design to introduce `reserved_quantity`, keeping physical stock intact until fulfillment."
+
+
+============================================================
+SECTION 18 - TRAP QUESTIONS
+============================================================
+
+Q1: What happens if an admin deletes a Product Category while products are currently assigned to it?
+ANSWER: In `Category` model, `parent` uses `on_delete=models.PROTECT` and in `Product` model, `category` uses `on_delete=models.PROTECT`. Django will raise a `ProtectedError` and prevent deletion, protecting catalog integrity.
+
+Q2: What happens if a user alters their shipping address in their user profile after placing an order?
+ANSWER: Past orders remain completely unaffected because during checkout, `CheckoutView` serializes the current address object into a flat JSON snapshot (`shipping_address` JSONField on `Order`). Future modifications to the `Address` table have zero effect on existing orders.
+
+Q3: What prevents a user from verifying a payment for an order belonging to someone else?
+ANSWER: In `create_payment_order`, we check `if order.user_id != user.id: raise ValidationError("You are not allowed to pay for this order.")`. Furthermore, endpoints are protected by `IsAuthenticated` middleware.
+
+
+============================================================
+SECTION 19 - RAPID-FIRE ROUND
+============================================================
+
+Q: Why use email instead of username for login?
+A: Modern user experience standard; emails are naturally unique and memorable.
+
+Q: Where is authentication handled?
+A: Stateless JWT via `djangorestframework-simplejwt` middleware in `config/settings.py`.
+
+Q: Where is business logic for order creation located?
+A: In `apps.orders.services.create_order_from_cart()`.
+
+Q: What HTTP status code is returned when checkout succeeds?
+A: HTTP 201 Created.
+
+Q: What database query prevents checkout race conditions?
+A: `select_for_update()` inside an `@transaction.atomic` block.
+
+Q: How is Razorpay payment verified?
+A: Server-side cryptographic HMAC-SHA256 signature verification.
+
+Q: What is the biggest performance optimization in catalog listing?
+A: Using `select_related()` and `prefetch_related()` on `ProductViewSet`.
+
+
+============================================================
+SECTION 20 - PROJECT WEAKNESSES
+============================================================
+
+PROBLEM 1: Lack of Asynchronous Webhook Handler for Payments
+* WHY IT MATTERS: If a customer completes Razorpay payment but their browser crashes before reaching the frontend `/verify/` API call, the order remains `PENDING` on backend.
+* INTERVIEWER QUESTION: How does your system handle asynchronous payment notifications?
+* GOOD ANSWER: Currently, payment verification relies on the client synchronous callback. In a production environment, I would add a Razorpay Webhook endpoint (`/api/v1/payments/webhook/`) to listen for `payment.captured` events asynchronously.
+
+PROBLEM 2: Absence of Redis Caching Layer for Catalog
+* WHY IT MATTERS: High read traffic on product catalog hits the database on every page view.
+* GOOD ANSWER: I would place Redis in front of DRF catalog viewsets using `django-redis` to cache product lists with TTL invalidation on product updates.
+
+
+============================================================
+SECTION 21 - PROJECT IMPROVEMENTS
+============================================================
+
+PRIORITY LIST:
+
+* [P0 - CRITICAL] Razorpay Webhook Endpoint
+  - Reason: Handle drop-offs during payment verification.
+  - Approach: Build public webhook endpoint verifying Razorpay signature header asynchronously.
+
+* [P1 - HIGH] Redis Caching & Celery Background Workers
+  - Reason: Offload catalog read queries and handle asynchronous email notifications.
+  - Approach: Configure Redis cache backend and Celery workers for background tasks.
+
+* [P2 - MEDIUM] Automated Test Suite with PyTest-Django
+  - Reason: Prevent regressions during backend refactoring.
+  - Approach: Write unit and integration tests covering auth, service layers, and permissions.
+
+* [P3 - NICE TO HAVE] Elasticsearch Full-Text Product Search
+  - Reason: Faster fuzzy search and faceting across large product catalogs.
+
+
+============================================================
+SECTION 22 - MOCK INTERVIEW
+============================================================
+
+ROUND 1 - PROJECT INTRODUCTION
+1. Tell me about your e-commerce project and its architecture.
+2. What were the main technical challenges you faced while building it?
+
+ROUND 2 - BASIC TECHNICAL
+3. Why did you choose Django REST Framework for the backend?
+4. How do you handle authentication in stateless REST APIs?
+
+ROUND 3 - CODE & ARCHITECTURE
+5. Walk me through your project's directory structure and separation of concerns.
+6. Why did you create a separate service layer (`services.py`)?
+
+ROUND 4 - API DESIGN
+7. Explain your checkout endpoint (`/api/v1/orders/checkout/`).
+8. What HTTP status codes do you return for validation vs authentication failures?
+
+ROUND 5 - DATABASE DESIGN
+9. How did you design the product variant schema?
+10. Why did you use `PROTECT` instead of `CASCADE` on order foreign keys?
+
+ROUND 6 - FRONTEND INTEGRATION
+11. How does your React frontend refresh expired JWT tokens?
+12. How do you handle optimistic UI updates during cart management?
+
+ROUND 7 - BACKEND & RBAC
+13. How does `HasModelPermission` dynamically evaluate user permissions?
+14. How are staff roles assigned in your system?
+
+ROUND 8 - SECURITY
+15. How do you prevent payment tampering in Razorpay integration?
+16. How does refresh token blacklisting work on logout?
+
+ROUND 9 - DEBUGGING
+17. How would you debug an issue where two users purchased the same item stock?
+
+ROUND 10 - PERFORMANCE
+18. How did you eliminate N+1 query problems in product catalog listing?
+
+ROUND 11 - TRAP QUESTIONS
+19. What happens if a user modifies their saved address after an order is placed?
+
+ROUND 12 - SENIOR-LEVEL QUESTIONS
+20. How would you scale this architecture to support 100,000 requests per minute?
+
+
+============================================================
+SECTION 23 - ANSWER KEY
+============================================================
+
+Q1: Tell me about your e-commerce project and its architecture.
+* EXPECTED ANSWER: Modular DRF backend + React frontend. Core modules: Accounts, Catalog, Cart, Inventory, Orders, Payments. Uses service layer for atomic operations.
+* WHY: Tests high-level project comprehension.
+* IMPORTANT POINTS: Mention JWT, RBAC, atomic checkout, Razorpay signature verification.
+
+Q7: Explain your checkout endpoint (`/api/v1/orders/checkout/`).
+* EXPECTED ANSWER: POST endpoint requiring authentication. Takes address IDs, invokes `create_order_from_cart()` inside `@transaction.atomic`, locks inventory rows with `select_for_update()`, creates order and items, updates reserved stock, clears cart.
+* WHY: Core business feature testing.
+
+Q9: How did you design the product variant schema?
+* EXPECTED ANSWER: `Product` holds general info (name, category, brand). `ProductVariant` holds SKU, price override, and ManyToMany relationship to `AttributeValue` (Color: Red, Size: XL). `Inventory` has a OneToOne relationship to `ProductVariant`.
+* WHY: Tests relational database normalization skills.
+
+Q15: How do you prevent payment tampering in Razorpay integration?
+* EXPECTED ANSWER: We never trust frontend success callbacks. Backend computes HMAC-SHA256 signature using `RAZORPAY_KEY_SECRET` and compares it with `razorpay_signature`. If mismatched, payment is rejected.
+* WHY: Tests security awareness.
+
+Q19: What happens if a user modifies their saved address after an order is placed?
+* EXPECTED ANSWER: Nothing happens to the placed order because address data is stored as an immutable JSON snapshot in `Order.shipping_address` during checkout.
+* WHY: Trap question checking data integrity foresight.
+
+Q20: How would you scale this architecture to support 100,000 requests per minute?
+* EXPECTED ANSWER: 
+  1. Separate read/write databases with read replicas.
+  2. Implement Redis caching for product catalog endpoints.
+  3. Use Redis for stock reservation before flushing to DB.
+  4. Deploy backend as stateless container instances (Docker/Kubernetes) behind a load balancer (Nginx/ALB).
+  5. Offload asynchronous tasks (emails, webhooks) to Celery workers.
+
+
+============================================================
+SECTION 24 - FINAL REVISION SHEET
+============================================================
+
+1. PROJECT IN 5 LINES:
+   - Full-stack enterprise e-commerce platform built with Django REST Framework and React.
+   - Stateless JWT authentication with refresh token blacklisting on logout.
+   - Dynamic Role-Based Access Control (RBAC) via custom `HasModelPermission`.
+   - Atomic checkout service with `select_for_update` DB row locking to prevent overstocking.
+   - Razorpay payment integration with server-side HMAC-SHA256 signature verification.
+
+2. ARCHITECTURE IN 5 LINES:
+   - Decoupled REST API (`/api/v1/`) with React SPA frontend.
+   - DRF ViewSets for CRUD, APIViews for custom procedural endpoints.
+   - Dedicated `services.py` layer for complex multi-model transactional operations.
+   - Relational database schema with immutable JSON address snapshotting.
+   - Scalable modular app directory structure (`accounts`, `catalog`, `cart`, `inventory`, `orders`, `payments`).
+
+3. MAIN TECHNOLOGIES:
+   - Python 3.12, Django 5.x, Django REST Framework, Simple JWT, PostgreSQL/SQLite, Razorpay SDK, React, Axios.
+
+4. MAIN APIS:
+   - `POST /api/v1/auth/token/` (JWT Login)
+   - `POST /api/v1/auth/logout/` (Token Blacklist)
+   - `GET /api/v1/catalog/products/` (Optimized Catalog List)
+   - `POST /api/v1/orders/checkout/` (Atomic Order Creation)
+   - `POST /api/v1/payments/verify/` (HMAC Payment Verification)
+
+5. MAIN DATABASE MODELS:
+   - `User`, `Address`, `Category`, `Brand`, `Product`, `ProductVariant`, `Inventory`, `Cart`, `CartItem`, `Order`, `OrderItem`, `Payment`.
+
+6. MAIN FEATURES:
+   - Email Auth, RBAC Role Management, Multi-Variant Catalog, Concurrency-Safe Checkout, Address Snapshotting, Razorpay Payments.
+
+7. AUTHENTICATION FLOW:
+   - Login -> Receive Access (short-lived) & Refresh (long-lived) Tokens -> Send `Bearer <token>` header -> Logout blacklists JTI in DB.
+
+8. MOST IMPORTANT BUSINESS LOGIC:
+   - `apps.orders.services.create_order_from_cart()` using `@transaction.atomic` + `select_for_update()`.
+
+9. BIGGEST TECHNICAL CHALLENGES:
+   - Preventing stock race conditions during concurrent checkouts; ensuring HMAC cryptographic payment verification.
+
+10. BIGGEST PROJECT WEAKNESS:
+    - Synchronous client-side payment verification fallback without async Webhook listener.
+
+11. BIGGEST IMPROVEMENT:
+    - Adding Razorpay Webhooks and Redis caching for product catalog read queries.
+
+12. MOST LIKELY INTERVIEWER QUESTIONS:
+    - "How did you implement RBAC?" -> `HasModelPermission` dynamic mapping.
+    - "How do you handle stock race conditions?" -> `@transaction.atomic` + `select_for_update()`.
+    - "Why store address as JSON in Order?" -> Address immutability snapshotting.
+
+13. QUESTIONS I MUST NEVER FAIL TO ANSWER:
+    - "Why custom User model?" -> Unique email authentication & future-proofing schema.
+    - "Why server-side payment verification?" -> Prevent client-side payload tampering and fraud.
+
+============================================================
+END OF INTERVIEW PREPARATION HANDBOOK
+============================================================

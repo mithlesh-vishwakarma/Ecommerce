@@ -180,4 +180,4 @@ def generate_order_number():
     """
     import uuid
 
-    return f"ORD-{uuid.uuid4().hex[:12].upper()}"
+    return f"ORD-{uuid.uuid4().hex[:12].upper()}"

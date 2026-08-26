@@ -54,6 +54,37 @@ class PaymentAdmin(admin.ModelAdmin):
         RefundInline,
     ]
 
+    actions = ["process_full_refund", "mark_as_failed_and_release_stock"]
+
+    @admin.action(description="Process Full Refund for selected payments")
+    def process_full_refund(self, request, queryset):
+        from .services import process_refund
+        success_count = 0
+        for payment in queryset:
+            if payment.status == Payment.Status.SUCCESS:
+                try:
+                    process_refund(
+                        payment=payment,
+                        amount=payment.amount,
+                        reason="Admin bulk full refund.",
+                        user=request.user,
+                    )
+                    success_count += 1
+                except Exception as e:
+                    self.message_user(request, f"Error refunding payment {payment.id}: {e}", level="ERROR")
+        self.message_user(request, f"Successfully processed refund for {success_count} payment(s).")
+
+    @admin.action(description="Mark as FAILED and release reserved stock")
+    def mark_as_failed_and_release_stock(self, request, queryset):
+        from .services import handle_payment_failure
+        count = 0
+        for payment in queryset:
+            if payment.status != Payment.Status.SUCCESS:
+                handle_payment_failure(payment, reason="Admin marked as failed.", user=request.user)
+                count += 1
+        self.message_user(request, f"Successfully failed and released stock for {count} payment(s).")
+
+
 
 @admin.register(PaymentTransaction)
 class PaymentTransactionAdmin(admin.ModelAdmin):
