@@ -48,6 +48,7 @@ INSTALLED_APPS = [
     "rest_framework",
     "corsheaders",
     "rest_framework_simplejwt.token_blacklist",
+    "drf_spectacular",
 
     # Local
     "apps.accounts",
@@ -78,7 +79,7 @@ REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": [
         "rest_framework_simplejwt.authentication.JWTAuthentication",
     ],
-
+    "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
     "DEFAULT_PERMISSION_CLASSES": [
         "rest_framework.permissions.IsAuthenticated",
     ],
@@ -128,6 +129,11 @@ DATABASES = {
     }
 }
 
+SPECTACULAR_SETTINGS = {
+    "TITLE": "ECommerce Web App API",
+    "DESCRIPTION": "API documentation for ECommerce Web App",
+    "VERSION": "1.0.0",
+}
 
 # Password validation
 # https://docs.djangoproject.com/en/6.1/ref/settings/#auth-password-validators

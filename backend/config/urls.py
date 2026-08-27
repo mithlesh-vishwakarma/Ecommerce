@@ -6,49 +6,61 @@ from rest_framework_simplejwt.views import (
     TokenObtainPairView,
     TokenRefreshView,
 )
-
+from drf_spectacular.views import (
+    SpectacularAPIView,
+    SpectacularSwaggerView,
+    SpectacularRedocView,
+)
 urlpatterns = [
     # Django Admin
     path("admin/", admin.site.urls),
     
     # JWT Tokens
     path(
-        "api/v1/auth/token/",
+        "api/auth/token/",
         TokenObtainPairView.as_view(),
         name="token_obtain_pair",
     ),
 
     path(
-        "api/v1/auth/token/refresh/",
+        "api/auth/token/refresh/",
         TokenRefreshView.as_view(),
         name="token_refresh",
     ),
     # Authentication
     path(
-        "api/v1/auth/",
+        "api/auth/",
         include("apps.accounts.urls")
     ),
     #catalog
     path(
-        "api/v1/catalog/",
+        "api/catalog/",
         include("apps.catalog.urls")
     ),
     path(
-        "api/v1/inventory/",
+        "api/inventory/",
         include("apps.inventory.urls"),
     ),
     path(
-        "api/v1/cart/",
+        "api/cart/",
         include("apps.cart.urls"),
     ),
     path(
-    "api/v1/orders/",
+    "api/orders/",
     include("apps.orders.urls"),
     ),
     path(
-    "api/v1/payments/",
+    "api/payments/",
     include("apps.payments.urls"),
 ),
+    path("api/schema/", SpectacularAPIView.as_view(), name="schema"),
+
+    path(
+        "api/schema/swagger/",
+        SpectacularSwaggerView.as_view(url_name="schema"),
+        name="swagger",
+    ),
+    path("api/schema/redoc/", SpectacularRedocView.as_view(url_name="schema"), name="redoc"),
 ]
 
 # Serve media files during development
